@@ -6,6 +6,8 @@ import { Layout } from './components/Layout'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
 import Panel from './pages/Panel'
+import Ejercicios from './pages/Ejercicios'
+import Practica from './pages/Practica'
 import Consultas from './pages/Consultas'
 import Admin from './pages/Admin'
 
@@ -19,6 +21,8 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Panel />} />
+              <Route path="/ejercicios" element={<Ejercicios />} />
+              <Route path="/ejercicios/:dominioId" element={<Practica />} />
               <Route path="/consultas" element={<Consultas />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<Admin />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 
@@ -84,6 +85,16 @@ export default function Panel() {
             <span className="etiqueta">Consultas sin responder</span>
           </article>
         </div>
+      )}
+
+      {resumen && (
+        <p style={{ marginTop: '1.5rem' }}>
+          <Link className="boton-enlace" to="/ejercicios">
+            {resumen.repasosPendientes > 0
+              ? `Repasar ahora (${resumen.repasosPendientes} pendientes)`
+              : 'Ir a practicar'}
+          </Link>
+        </p>
       )}
     </section>
   )

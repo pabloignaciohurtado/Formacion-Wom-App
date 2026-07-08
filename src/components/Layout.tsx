@@ -13,6 +13,7 @@ export function Layout() {
             <NavLink to="/" end>
               Panel
             </NavLink>
+            <NavLink to="/ejercicios">Ejercicios</NavLink>
             <NavLink to="/consultas">Consultas</NavLink>
             {perfil?.role === 'admin' && (
               <NavLink to="/admin">Administración</NavLink>

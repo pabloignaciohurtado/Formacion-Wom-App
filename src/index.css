@@ -229,6 +229,113 @@ textarea:focus {
   border-radius: 4px;
 }
 
+.boton-enlace {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  background-color: var(--wom-morado);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.boton-enlace:hover {
+  background-color: var(--wom-magenta);
+}
+
+.tarjeta-dominio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.tarjeta-dominio h3 {
+  margin: 0;
+  color: var(--wom-morado);
+}
+
+.descripcion-dominio {
+  margin: 0;
+  color: #666;
+}
+
+.barra-maestria {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gris-fondo);
+  overflow: hidden;
+}
+
+.barra-maestria-avance {
+  height: 100%;
+  background: linear-gradient(90deg, var(--wom-morado), var(--wom-magenta));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.tarjeta-dominio .boton-enlace {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.tarjeta-quiz {
+  max-width: 720px;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.enunciado {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+.opciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.opcion {
+  text-align: left;
+  background: var(--gris-fondo);
+  color: var(--gris-texto);
+  border: 2px solid transparent;
+}
+
+.opcion:hover:not(:disabled) {
+  background: white;
+  border-color: var(--wom-morado);
+  color: var(--gris-texto);
+}
+
+.opcion:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.opcion-correcta {
+  border-color: #1a7f37;
+  background: #e6f4ea;
+}
+
+.opcion-incorrecta {
+  border-color: #c0392b;
+  background: #fdecea;
+}
+
+.feedback {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
 .tabla-envoltura {
   overflow-x: auto;
   margin-bottom: 2rem;
