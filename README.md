@@ -43,9 +43,22 @@ src/
   pages/Registro.tsx        # registro de relatores (el trigger crea el perfil inactivo)
   pages/CuentaInactiva.tsx  # pantalla para cuentas aún no activadas por un admin
   pages/Panel.tsx           # panel con resumen real (repasos, intentos, metas, consultas)
+  pages/Ejercicios.tsx      # dominios con maestría, metas y pendientes de repaso
+  pages/Practica.tsx        # sesión de práctica: pregunta → feedback → resumen
   pages/Consultas.tsx       # relator: enviar consultas y ver respuestas
   pages/Admin.tsx           # admin: activar/desactivar relatores y responder consultas
+  data/contenido.ts         # catálogo editable de dominios, objetivos y ejercicios
+  lib/srs.ts                # lógica Leitner: cajas, intervalos y maestría
 ```
+
+## Ejercicios y repaso espaciado
+
+El contenido (dominios → objetivos → ejercicios de alternativas) vive en
+`src/data/contenido.ts`; los ids son estables y se referencian desde
+`attempts` y `srs_cards`. Cada respuesta registra un intento y actualiza la
+tarjeta SRS con el método Leitner: acertar sube de caja (intervalos de 1, 2,
+4, 8 y 16 días), fallar devuelve a la caja 1. La maestría del dominio es el
+avance promedio de caja de sus ejercicios.
 
 ## Modelo de datos (Supabase)
 
