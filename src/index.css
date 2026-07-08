@@ -1,0 +1,135 @@
+:root {
+  --wom-morado: #641c8f;
+  --wom-magenta: #e6007e;
+  --gris-fondo: #f5f4f7;
+  --gris-texto: #2b2b33;
+
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  color: var(--gris-texto);
+  background-color: var(--gris-fondo);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  background-color: var(--wom-morado);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--wom-magenta);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+input {
+  font: inherit;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+input:focus {
+  outline: 2px solid var(--wom-morado);
+  border-color: transparent;
+}
+
+.pantalla-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.tarjeta-login {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(400px, 100%);
+  padding: 2rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.08);
+}
+
+.tarjeta-login h1 {
+  margin: 0;
+  color: var(--wom-morado);
+}
+
+.tarjeta-login .subtitulo {
+  margin-top: 0;
+  color: #666;
+}
+
+.tarjeta-login label {
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.tarjeta-login button {
+  margin-top: 1rem;
+}
+
+.mensaje-error {
+  color: #c0392b;
+  margin: 0.5rem 0 0;
+}
+
+.estado-carga {
+  text-align: center;
+  padding: 3rem;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.barra-superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--wom-morado);
+  color: white;
+}
+
+.barra-superior .marca {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.barra-superior .sesion {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.barra-superior button {
+  background-color: var(--wom-magenta);
+}
+
+.contenido {
+  flex: 1;
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
