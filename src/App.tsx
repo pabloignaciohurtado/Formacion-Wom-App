@@ -11,10 +11,14 @@ import Practica from './pages/Practica'
 import Consultas from './pages/Consultas'
 import Admin from './pages/Admin'
 
+// En GitHub Pages la app se sirve bajo /Formacion-Wom-App/; BASE_URL la
+// define vite build --base=… ('/' en desarrollo y en Vercel).
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
