@@ -35,12 +35,28 @@ npm run preview   # servir el build localmente
 
 ```
 src/
-  lib/supabase.ts        # cliente Supabase (lee las variables VITE_*)
-  auth/                  # contexto de sesión, hook useAuth, ruta protegida
-  components/Layout.tsx  # layout con barra superior y cierre de sesión
-  pages/Login.tsx        # inicio de sesión con email y contraseña
-  pages/Panel.tsx        # panel inicial (punto de partida de los cursos)
+  lib/supabase.ts           # cliente Supabase tipado (lee las variables VITE_*)
+  lib/database.types.ts     # tipos generados desde el esquema real de Supabase
+  auth/                     # contexto de sesión + perfil, hook useAuth, ruta protegida
+  components/Layout.tsx     # layout con barra superior, nombre/rol y cierre de sesión
+  pages/Login.tsx           # inicio de sesión con email y contraseña
+  pages/Registro.tsx        # registro de relatores (el trigger crea el perfil inactivo)
+  pages/CuentaInactiva.tsx  # pantalla para cuentas aún no activadas por un admin
+  pages/Panel.tsx           # panel con resumen real (repasos, intentos, metas, consultas)
 ```
+
+## Modelo de datos (Supabase)
+
+El esquema vive en el proyecto Supabase con RLS activo en todas las tablas:
+
+- `profiles` — perfil por usuario (`role`: `relator` | `admin`, `activo` lo habilita un admin; se crea solo vía trigger `handle_new_user`)
+- `attempts` — intentos de ejercicios (puntaje, correcto, dominio y objetivo)
+- `goals` — metas de maestría por dominio, asignadas por un admin
+- `srs_cards` — repaso espaciado tipo Leitner (`caja`, `proximo_repaso`)
+- `activity_events` — bitácora de actividad
+- `consultas` — preguntas de relatores respondidas por un admin
+
+Cada usuario solo ve/escribe sus propias filas; `is_admin()` habilita la vista global para administradores.
 
 ## Flujo de trabajo
 
