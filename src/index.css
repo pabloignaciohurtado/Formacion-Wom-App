@@ -127,6 +127,134 @@ input:focus {
   background-color: var(--wom-magenta);
 }
 
+.zona-izquierda {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.navegacion {
+  display: flex;
+  gap: 1rem;
+}
+
+.navegacion a {
+  color: rgb(255 255 255 / 0.8);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+.navegacion a.active {
+  color: white;
+  border-bottom-color: var(--wom-magenta);
+}
+
+.formulario-consulta,
+.formulario-respuesta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0 1.5rem;
+  max-width: 640px;
+}
+
+.formulario-consulta label {
+  font-weight: 600;
+}
+
+textarea {
+  font: inherit;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: 2px solid var(--wom-morado);
+  border-color: transparent;
+}
+
+.formulario-consulta button,
+.formulario-respuesta button {
+  align-self: flex-start;
+}
+
+.lista-consultas {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 640px;
+}
+
+.tarjeta-consulta {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.texto-consulta {
+  margin: 0 0 0.25rem;
+}
+
+.meta-consulta {
+  margin: 0;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.estado {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.estado-pendiente {
+  color: #b06000;
+}
+
+.estado-respondida {
+  color: #1a7f37;
+}
+
+.respuesta-admin {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--gris-fondo);
+  border-left: 3px solid var(--wom-morado);
+  border-radius: 4px;
+}
+
+.tabla-envoltura {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.tabla-admin {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
+}
+
+.tabla-admin th,
+.tabla-admin td {
+  text-align: left;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.tabla-admin th {
+  color: #666;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
 .insignia-admin {
   margin-left: 0.5rem;
   padding: 0.1rem 0.5rem;

@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 
 export function Layout() {
@@ -7,7 +7,18 @@ export function Layout() {
   return (
     <div className="app">
       <header className="barra-superior">
-        <span className="marca">Formación WOM</span>
+        <div className="zona-izquierda">
+          <span className="marca">Formación WOM</span>
+          <nav className="navegacion">
+            <NavLink to="/" end>
+              Panel
+            </NavLink>
+            <NavLink to="/consultas">Consultas</NavLink>
+            {perfil?.role === 'admin' && (
+              <NavLink to="/admin">Administración</NavLink>
+            )}
+          </nav>
+        </div>
         <div className="sesion">
           <span>
             {perfil?.nombre ?? user?.email}

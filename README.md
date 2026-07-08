@@ -43,6 +43,8 @@ src/
   pages/Registro.tsx        # registro de relatores (el trigger crea el perfil inactivo)
   pages/CuentaInactiva.tsx  # pantalla para cuentas aún no activadas por un admin
   pages/Panel.tsx           # panel con resumen real (repasos, intentos, metas, consultas)
+  pages/Consultas.tsx       # relator: enviar consultas y ver respuestas
+  pages/Admin.tsx           # admin: activar/desactivar relatores y responder consultas
 ```
 
 ## Modelo de datos (Supabase)
