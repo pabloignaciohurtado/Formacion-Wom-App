@@ -13,6 +13,7 @@ import Practica from './pages/Practica'
 import Actividades from './pages/Actividades'
 import Consultas from './pages/Consultas'
 import Admin from './pages/Admin'
+import FichaRelator from './pages/FichaRelator'
 
 // En GitHub Pages la app se sirve bajo /Formacion-Wom-App/; BASE_URL la
 // define vite build --base=… ('/' en desarrollo y en Vercel).
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/consultas" element={<Consultas />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/relator/:id" element={<FichaRelator />} />
               </Route>
             </Route>
           </Route>

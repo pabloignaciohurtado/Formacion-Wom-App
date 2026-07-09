@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
+import { AdminEquipo } from '../components/AdminEquipo'
 import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
@@ -144,6 +145,8 @@ export default function Admin() {
           </table>
         </Tarjeta>
       )}
+
+      <AdminEquipo />
 
       <AdminActividades
         totalActivos={(relatores ?? []).filter((r) => r.activo).length}
