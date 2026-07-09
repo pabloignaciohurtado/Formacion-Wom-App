@@ -61,6 +61,8 @@ export default function Login() {
 
         <p className="subtitulo">
           ¿No tienes cuenta? <Link to="/registro">Regístrate</Link>
+          <br />
+          <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
         </p>
       </form>
     </main>

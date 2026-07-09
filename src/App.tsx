@@ -5,6 +5,8 @@ import { AdminRoute } from './auth/AdminRoute'
 import { Layout } from './components/Layout'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
+import Recuperar from './pages/Recuperar'
+import Restablecer from './pages/Restablecer'
 import Panel from './pages/Panel'
 import Ejercicios from './pages/Ejercicios'
 import Practica from './pages/Practica'
@@ -22,6 +24,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/recuperar" element={<Recuperar />} />
+          <Route path="/restablecer" element={<Restablecer />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Panel />} />
