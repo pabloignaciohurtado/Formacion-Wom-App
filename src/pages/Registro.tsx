@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { AuthLayout } from '../components/AuthLayout'
+import { Boton, Campo, MensajeError, Tarjeta } from '../components/ui'
 
 export default function Registro() {
   const { session, signUp } = useAuth()
@@ -30,66 +32,79 @@ export default function Registro() {
 
   if (creada) {
     return (
-      <main className="pantalla-login">
-        <div className="tarjeta-login">
-          <h1>Cuenta creada</h1>
-          <p>
+      <AuthLayout>
+        <Tarjeta className="p-8 text-center">
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-exito/15 text-3xl">
+            🎉
+          </div>
+          <h1 className="text-2xl font-extrabold">Cuenta creada</h1>
+          <p className="mt-2 text-sm text-tinta-suave">
             Revisa tu correo si se requiere confirmación. Luego, un
             administrador debe activar tu cuenta para que puedas entrar.
           </p>
-          <Link to="/login">Volver al inicio de sesión</Link>
-        </div>
-      </main>
+          <Link
+            to="/login"
+            className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+          >
+            Volver al inicio de sesión
+          </Link>
+        </Tarjeta>
+      </AuthLayout>
     )
   }
 
   return (
-    <main className="pantalla-login">
-      <form className="tarjeta-login" onSubmit={handleSubmit}>
-        <h1>Crear cuenta</h1>
-        <p className="subtitulo">Regístrate como relator de formación WOM</p>
-
-        <label htmlFor="nombre">Nombre</label>
-        <input
-          id="nombre"
-          type="text"
-          autoComplete="name"
-          required
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-        />
-
-        <label htmlFor="email">Correo electrónico</label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <label htmlFor="password">Contraseña</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {error && <p role="alert" className="mensaje-error">{error}</p>}
-
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
-        </button>
-
-        <p className="subtitulo">
-          ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
+    <AuthLayout>
+      <Tarjeta className="p-8">
+        <h1 className="text-2xl font-extrabold">Crear cuenta</h1>
+        <p className="mb-6 mt-1 text-sm text-tinta-suave">
+          Regístrate como relator de formación WOM
         </p>
-      </form>
-    </main>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Campo
+            etiqueta="Nombre"
+            id="nombre"
+            type="text"
+            autoComplete="name"
+            required
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+          />
+          <Campo
+            etiqueta="Correo electrónico"
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Campo
+            etiqueta="Contraseña"
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && <MensajeError>{error}</MensajeError>}
+
+          <Boton type="submit" disabled={enviando} className="w-full">
+            {enviando ? 'Creando cuenta…' : 'Crear cuenta'}
+          </Boton>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-tinta-suave">
+          ¿Ya tienes cuenta?{' '}
+          <Link to="/login" className="font-semibold text-wom-600 hover:underline">
+            Inicia sesión
+          </Link>
+        </p>
+      </Tarjeta>
+    </AuthLayout>
   )
 }

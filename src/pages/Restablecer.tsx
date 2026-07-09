@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { AuthLayout } from '../components/AuthLayout'
+import { Boton, Campo, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 
 export default function Restablecer() {
   const { session, loading } = useAuth()
@@ -12,24 +14,30 @@ export default function Restablecer() {
   const [guardando, setGuardando] = useState(false)
 
   if (loading) {
-    return <p className="estado-carga">Cargando…</p>
+    return <EstadoCarga />
   }
 
   // El enlace del correo abre esta página ya con la sesión de recuperación.
   if (!session) {
     return (
-      <main className="pantalla-login">
-        <div className="tarjeta-login">
-          <h1>Enlace inválido o expirado</h1>
-          <p>
+      <AuthLayout>
+        <Tarjeta className="p-8 text-center">
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-red-50 text-3xl">
+            ⏰
+          </div>
+          <h1 className="text-2xl font-extrabold">Enlace inválido o expirado</h1>
+          <p className="mt-2 text-sm text-tinta-suave">
             Este enlace de recuperación ya no es válido. Solicita uno nuevo y
             úsalo apenas llegue a tu correo.
           </p>
-          <Link className="boton-enlace" to="/recuperar">
+          <Link
+            to="/recuperar"
+            className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+          >
             Solicitar nuevo enlace
           </Link>
-        </div>
-      </main>
+        </Tarjeta>
+      </AuthLayout>
     )
   }
 
@@ -51,41 +59,42 @@ export default function Restablecer() {
   }
 
   return (
-    <main className="pantalla-login">
-      <form className="tarjeta-login" onSubmit={handleSubmit}>
-        <h1>Nueva contraseña</h1>
-        <p className="subtitulo">
+    <AuthLayout>
+      <Tarjeta className="p-8">
+        <h1 className="text-2xl font-extrabold">Nueva contraseña</h1>
+        <p className="mb-6 mt-1 text-sm text-tinta-suave">
           Define la nueva contraseña para {session.user.email}
         </p>
 
-        <label htmlFor="password">Nueva contraseña</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Campo
+            etiqueta="Nueva contraseña"
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Campo
+            etiqueta="Repite la contraseña"
+            id="confirmacion"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={confirmacion}
+            onChange={(e) => setConfirmacion(e.target.value)}
+          />
 
-        <label htmlFor="confirmacion">Repite la contraseña</label>
-        <input
-          id="confirmacion"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          value={confirmacion}
-          onChange={(e) => setConfirmacion(e.target.value)}
-        />
+          {error && <MensajeError>{error}</MensajeError>}
 
-        {error && <p role="alert" className="mensaje-error">{error}</p>}
-
-        <button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando…' : 'Guardar contraseña'}
-        </button>
-      </form>
-    </main>
+          <Boton type="submit" disabled={guardando} className="w-full">
+            {guardando ? 'Guardando…' : 'Guardar contraseña'}
+          </Boton>
+        </form>
+      </Tarjeta>
+    </AuthLayout>
   )
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Dumbbell, Target, MessageCircleQuestion, Flame } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { EstadoCarga, Tarjeta } from '../components/ui'
 
 interface Resumen {
   intentos: number
@@ -9,6 +11,33 @@ interface Resumen {
   metas: number
   consultasPendientes: number
 }
+
+const tarjetas = [
+  {
+    clave: 'repasosPendientes' as const,
+    etiqueta: 'Repasos pendientes hoy',
+    Icono: Flame,
+    color: 'text-magenta-500 bg-magenta-500/10',
+  },
+  {
+    clave: 'intentos' as const,
+    etiqueta: 'Ejercicios intentados',
+    Icono: Dumbbell,
+    color: 'text-wom-600 bg-wom-600/10',
+  },
+  {
+    clave: 'metas' as const,
+    etiqueta: 'Metas asignadas',
+    Icono: Target,
+    color: 'text-exito bg-exito/10',
+  },
+  {
+    clave: 'consultasPendientes' as const,
+    etiqueta: 'Consultas sin responder',
+    Icono: MessageCircleQuestion,
+    color: 'text-amber-600 bg-amber-500/10',
+  },
+]
 
 export default function Panel() {
   const { user, perfil } = useAuth()
@@ -55,46 +84,43 @@ export default function Panel() {
     }
   }, [user])
 
+  const nombrePila = (perfil?.nombre ?? '').split(/[\s.]+/)[0] || 'relator'
+
   return (
     <section>
-      <h2>Panel de formación</h2>
-      <p>
-        Hola {perfil?.nombre ?? user?.email}
-        {perfil?.role === 'admin' && ' (administrador)'}. Este es tu estado de
-        formación:
-      </p>
+      <h1 className="text-2xl font-extrabold lg:text-3xl">
+        Hola, <span className="capitalize">{nombrePila}</span> 👋
+      </h1>
+      <p className="mt-1 text-tinta-suave">Este es tu estado de formación.</p>
 
       {!resumen ? (
-        <p className="estado-carga">Cargando resumen…</p>
+        <EstadoCarga texto="Cargando resumen…" />
       ) : (
-        <div className="tarjetas-resumen">
-          <article className="tarjeta-dato">
-            <span className="dato">{resumen.repasosPendientes}</span>
-            <span className="etiqueta">Repasos pendientes hoy</span>
-          </article>
-          <article className="tarjeta-dato">
-            <span className="dato">{resumen.intentos}</span>
-            <span className="etiqueta">Ejercicios intentados</span>
-          </article>
-          <article className="tarjeta-dato">
-            <span className="dato">{resumen.metas}</span>
-            <span className="etiqueta">Metas asignadas</span>
-          </article>
-          <article className="tarjeta-dato">
-            <span className="dato">{resumen.consultasPendientes}</span>
-            <span className="etiqueta">Consultas sin responder</span>
-          </article>
-        </div>
-      )}
+        <>
+          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {tarjetas.map(({ clave, etiqueta, Icono, color }) => (
+              <Tarjeta key={clave} className="flex flex-col gap-3">
+                <span className={`grid size-10 place-items-center rounded-xl ${color}`}>
+                  <Icono className="size-5" />
+                </span>
+                <div>
+                  <p className="text-3xl font-extrabold">{resumen[clave]}</p>
+                  <p className="text-sm text-tinta-suave">{etiqueta}</p>
+                </div>
+              </Tarjeta>
+            ))}
+          </div>
 
-      {resumen && (
-        <p style={{ marginTop: '1.5rem' }}>
-          <Link className="boton-enlace" to="/ejercicios">
+          <Link
+            to="/ejercicios"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-magenta-500 px-6 py-3 font-semibold text-white shadow-lg shadow-magenta-500/25 transition-all hover:bg-magenta-600 active:scale-[0.98]"
+          >
+            <Flame className="size-5" />
             {resumen.repasosPendientes > 0
               ? `Repasar ahora (${resumen.repasosPendientes} pendientes)`
               : 'Ir a practicar'}
           </Link>
-        </p>
+        </>
       )}
     </section>
   )

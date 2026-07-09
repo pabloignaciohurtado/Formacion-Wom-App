@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
+import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
 type Perfil = Tables<'profiles'>
@@ -71,86 +73,126 @@ export default function Admin() {
 
   return (
     <section>
-      <h2>Administración</h2>
-      {error && <p role="alert" className="mensaje-error">{error}</p>}
+      <h1 className="text-2xl font-extrabold lg:text-3xl">Administración</h1>
+      {error && (
+        <div className="mt-4">
+          <MensajeError>{error}</MensajeError>
+        </div>
+      )}
 
-      <h3>Relatores</h3>
+      <h2 className="mt-6 text-lg font-bold">Relatores</h2>
       {!relatores ? (
-        <p className="estado-carga">Cargando relatores…</p>
+        <EstadoCarga texto="Cargando relatores…" />
       ) : (
-        <div className="tabla-envoltura">
-          <table className="tabla-admin">
+        <Tarjeta className="mt-3 overflow-x-auto p-0">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th></th>
+              <tr className="border-b border-niebla text-left text-xs uppercase tracking-wide text-tinta-suave">
+                <th className="px-5 py-3">Nombre</th>
+                <th className="px-5 py-3">Email</th>
+                <th className="px-5 py-3">Rol</th>
+                <th className="px-5 py-3">Estado</th>
+                <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {relatores.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.nombre}</td>
-                  <td>{r.email}</td>
-                  <td>{r.role}</td>
-                  <td>{r.activo ? 'activo' : 'inactivo'}</td>
-                  <td>
+                <tr key={r.id} className="border-b border-niebla last:border-0">
+                  <td className="px-5 py-3 font-semibold">{r.nombre}</td>
+                  <td className="px-5 py-3 text-tinta-suave">{r.email}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${
+                        r.role === 'admin'
+                          ? 'bg-magenta-500/10 text-magenta-500'
+                          : 'bg-wom-600/10 text-wom-600'
+                      }`}
+                    >
+                      {r.role}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
+                        r.activo ? 'text-exito' : 'text-tinta-suave'
+                      }`}
+                    >
+                      <span
+                        className={`size-2 rounded-full ${
+                          r.activo ? 'bg-exito' : 'bg-gray-300'
+                        }`}
+                      />
+                      {r.activo ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-right">
                     {r.id !== user?.id && (
-                      <button type="button" onClick={() => void cambiarActivo(r)}>
+                      <Boton
+                        type="button"
+                        variante={r.activo ? 'fantasma' : 'secundario'}
+                        className="!px-3 !py-1.5 text-sm"
+                        onClick={() => void cambiarActivo(r)}
+                      >
                         {r.activo ? 'Desactivar' : 'Activar'}
-                      </button>
+                      </Boton>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Tarjeta>
       )}
 
-      <h3>Consultas</h3>
+      <h2 className="mt-8 text-lg font-bold">Consultas</h2>
       {!consultas ? (
-        <p className="estado-carga">Cargando consultas…</p>
+        <EstadoCarga texto="Cargando consultas…" />
       ) : consultas.length === 0 ? (
-        <p>No hay consultas.</p>
+        <p className="mt-3 text-tinta-suave">No hay consultas.</p>
       ) : (
-        <ul className="lista-consultas">
+        <ul className="mt-3 space-y-3">
           {consultas.map((c) => (
-            <li key={c.id} className="tarjeta-consulta">
-              <p className="texto-consulta">
-                <strong>{c.user_nombre}:</strong> {c.texto}
-              </p>
-              <p className="meta-consulta">
-                {new Date(c.fecha).toLocaleString()} ·{' '}
-                <span className={`estado estado-${c.estado}`}>{c.estado}</span>
-              </p>
-              {c.estado === 'pendiente' ? (
-                <div className="formulario-respuesta">
-                  <textarea
-                    rows={2}
-                    placeholder="Escribe la respuesta…"
-                    value={respuestas[c.id] ?? ''}
-                    onChange={(e) =>
-                      setRespuestas((prev) => ({ ...prev, [c.id]: e.target.value }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    disabled={!(respuestas[c.id] ?? '').trim()}
-                    onClick={() => void responder(c)}
-                  >
-                    Responder
-                  </button>
-                </div>
-              ) : (
-                c.respuesta_admin && (
-                  <p className="respuesta-admin">
-                    <strong>Respuesta:</strong> {c.respuesta_admin}
-                  </p>
-                )
-              )}
+            <li key={c.id}>
+              <Tarjeta>
+                <p className="font-medium">
+                  <strong className="text-wom-600">{c.user_nombre}:</strong>{' '}
+                  {c.texto}
+                </p>
+                <p className="mt-2 flex items-center gap-2 text-xs text-tinta-suave">
+                  {new Date(c.fecha).toLocaleString()}
+                  <EstadoConsulta estado={c.estado} />
+                </p>
+                {c.estado === 'pendiente' ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <textarea
+                      rows={2}
+                      placeholder="Escribe la respuesta…"
+                      value={respuestas[c.id] ?? ''}
+                      onChange={(e) =>
+                        setRespuestas((prev) => ({
+                          ...prev,
+                          [c.id]: e.target.value,
+                        }))
+                      }
+                      className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <Boton
+                      type="button"
+                      disabled={!(respuestas[c.id] ?? '').trim()}
+                      onClick={() => void responder(c)}
+                      className="sm:self-end"
+                    >
+                      Responder
+                    </Boton>
+                  </div>
+                ) : (
+                  c.respuesta_admin && (
+                    <p className="mt-3 rounded-xl border-l-4 border-wom-600 bg-wom-50 px-4 py-2.5 text-sm">
+                      <strong>Respuesta:</strong> {c.respuesta_admin}
+                    </p>
+                  )
+                )}
+              </Tarjeta>
             </li>
           ))}
         </ul>
