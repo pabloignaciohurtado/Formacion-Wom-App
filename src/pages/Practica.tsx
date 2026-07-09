@@ -93,17 +93,29 @@ export default function Practica() {
     [dominio, ejercicio]
   )
 
+  // Orden aleatorio de alternativas por pregunta y por sesión (anti-copia):
+  // orden[i] = índice original de la alternativa mostrada en la posición i.
+  const orden = useMemo(() => {
+    if (!ejercicio) return []
+    const indices = ejercicio.opciones.map((_, i) => i)
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[indices[i], indices[j]] = [indices[j], indices[i]]
+    }
+    return indices
+  }, [ejercicio])
+
   if (!dominio) {
     return <Navigate to="/ejercicios" replace />
   }
 
-  const responder = async (opcion: number) => {
+  const responder = async (posicion: number) => {
     if (!user || !ejercicio || fase !== 'pregunta') return
-    setSeleccion(opcion)
+    setSeleccion(posicion)
     setFase('feedback')
     setError(null)
 
-    const correcto = opcion === ejercicio.correcta
+    const correcto = orden[posicion] === ejercicio.correcta
     const ganado = correcto ? XP_ACIERTO : XP_INTENTO
     if (correcto) setCorrectas((c) => c + 1)
     setXp((x) => x + ganado)
@@ -225,7 +237,7 @@ export default function Practica() {
   }
 
   const progreso = ((indice + (fase === 'feedback' ? 1 : 0)) / cola.length) * 100
-  const acerto = seleccion === ejercicio.correcta
+  const acerto = seleccion !== null && orden[seleccion] === ejercicio.correcta
 
   return (
     <section className="mx-auto max-w-xl">
@@ -284,12 +296,14 @@ export default function Practica() {
           <p className="text-lg font-bold">{ejercicio.enunciado}</p>
 
           <div className="mt-5 space-y-2.5">
-            {ejercicio.opciones.map((opcion, i) => {
+            {orden.map((indiceOriginal, i) => {
+              const opcion = ejercicio.opciones[indiceOriginal]
+              const esLaCorrecta = indiceOriginal === ejercicio.correcta
               let clase =
                 'w-full rounded-xl border-2 border-transparent bg-niebla px-4 py-3 text-left font-medium transition-colors'
               if (fase === 'pregunta') {
                 clase += ' hover:border-wom-600 hover:bg-white cursor-pointer'
-              } else if (i === ejercicio.correcta) {
+              } else if (esLaCorrecta) {
                 clase += ' border-exito bg-exito/10'
               } else if (i === seleccion) {
                 clase += ' border-red-400 bg-red-50'
@@ -298,8 +312,7 @@ export default function Practica() {
               }
               const esIncorrectaElegida =
                 fase === 'feedback' && i === seleccion && !acerto
-              const esCorrectaMostrada =
-                fase === 'feedback' && i === ejercicio.correcta
+              const esCorrectaMostrada = fase === 'feedback' && esLaCorrecta
               return (
                 <motion.button
                   key={i}

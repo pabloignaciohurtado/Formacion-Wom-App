@@ -87,7 +87,12 @@ export default function Ejercicios() {
               >
                 <Tarjeta className="flex h-full flex-col gap-3">
                 <div>
-                  <h2 className="font-bold text-wom-600">{dominio.titulo}</h2>
+                  <h2 className="flex items-center gap-2 font-bold text-wom-600">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-wom-50 text-lg">
+                      {dominio.icono}
+                    </span>
+                    {dominio.titulo}
+                  </h2>
                   <p className="mt-0.5 text-sm text-tinta-suave">
                     {dominio.descripcion}
                   </p>
