@@ -2,6 +2,8 @@
 
 Aplicación web de formación interna de WOM. Construida con React 19, TypeScript, Vite y Supabase (autenticación y base de datos).
 
+📖 **Documentación completa del proyecto (arquitectura, modelo de datos, módulos funcionales, sistema de diseño y flujo de trabajo):** [`DOCUMENTACION.md`](./DOCUMENTACION.md)
+
 ## Stack
 
 - **Frontend:** React 19 + TypeScript + Vite
