@@ -10,6 +10,7 @@ import Restablecer from './pages/Restablecer'
 import Panel from './pages/Panel'
 import Ejercicios from './pages/Ejercicios'
 import Practica from './pages/Practica'
+import Actividades from './pages/Actividades'
 import Consultas from './pages/Consultas'
 import Admin from './pages/Admin'
 
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/" element={<Panel />} />
               <Route path="/ejercicios" element={<Ejercicios />} />
               <Route path="/ejercicios/:dominioId" element={<Practica />} />
+              <Route path="/actividades" element={<Actividades />} />
               <Route path="/consultas" element={<Consultas />} />
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<Admin />} />

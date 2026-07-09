@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      actividades: {
+        Row: {
+          id: string
+          titulo: string
+          descripcion: string
+          enlace: string | null
+          fecha_limite: string | null
+          activa: boolean
+          creada_por: string | null
+          creada_en: string
+        }
+        Insert: {
+          id?: string
+          titulo: string
+          descripcion?: string
+          enlace?: string | null
+          fecha_limite?: string | null
+          activa?: boolean
+          creada_por?: string | null
+          creada_en?: string
+        }
+        Update: {
+          id?: string
+          titulo?: string
+          descripcion?: string
+          enlace?: string | null
+          fecha_limite?: string | null
+          activa?: boolean
+          creada_por?: string | null
+          creada_en?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividades_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      actividades_completadas: {
+        Row: {
+          actividad_id: string
+          user_id: string
+          completada_en: string
+        }
+        Insert: {
+          actividad_id: string
+          user_id: string
+          completada_en?: string
+        }
+        Update: {
+          actividad_id?: string
+          user_id?: string
+          completada_en?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividades_completadas_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_completadas_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_events: {
         Row: {
           detalle: string | null
