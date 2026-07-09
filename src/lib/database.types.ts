@@ -88,6 +88,32 @@ export type Database = {
           },
         ]
       }
+      insignias_usuario: {
+        Row: {
+          user_id: string
+          insignia_id: string
+          obtenida_en: string
+        }
+        Insert: {
+          user_id: string
+          insignia_id: string
+          obtenida_en?: string
+        }
+        Update: {
+          user_id?: string
+          insignia_id?: string
+          obtenida_en?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insignias_usuario_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_events: {
         Row: {
           detalle: string | null
