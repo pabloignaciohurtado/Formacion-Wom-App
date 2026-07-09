@@ -267,6 +267,22 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      mi_racha: { Args: never; Returns: number }
+      ranking_semanal: {
+        Args: never
+        Returns: {
+          user_id: string
+          nombre: string
+          xp: number
+          intentos: number
+          correctas: number
+          posicion: number
+        }[]
+      }
+      heroes_semana: {
+        Args: never
+        Returns: { nombre: string; xp: number; posicion: number }[]
+      }
     }
     Enums: {
       [_ in never]: never

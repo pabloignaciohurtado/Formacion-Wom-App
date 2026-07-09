@@ -10,9 +10,9 @@ import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 
+import { XP_ACIERTO, XP_INTENTO } from '../lib/gamificacion'
+
 const EJERCICIOS_POR_SESION = 10
-export const XP_ACIERTO = 25
-export const XP_INTENTO = 5
 
 const COLORES_WOM = ['#4D008C', '#E92070', '#33CC9E', '#A67FC5']
 
