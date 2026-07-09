@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import {
   LayoutDashboard,
   Dumbbell,
+  ClipboardCheck,
   MessageCircleQuestion,
   ShieldCheck,
   LogOut,
@@ -13,6 +14,7 @@ import { MarcaWom } from './MarcaWom'
 const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
   { a: '/ejercicios', texto: 'Ejercicios', Icono: Dumbbell },
+  { a: '/actividades', texto: 'Actividades', Icono: ClipboardCheck },
   { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion },
 ]
 

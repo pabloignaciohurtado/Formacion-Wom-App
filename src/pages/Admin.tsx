@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
+import { AdminActividades } from '../components/AdminActividades'
 import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
@@ -143,6 +144,13 @@ export default function Admin() {
           </table>
         </Tarjeta>
       )}
+
+      <AdminActividades
+        totalActivos={(relatores ?? []).filter((r) => r.activo).length}
+        nombresPorId={Object.fromEntries(
+          (relatores ?? []).map((r) => [r.id, r.nombre])
+        )}
+      />
 
       <h2 className="mt-8 text-lg font-bold">Consultas</h2>
       {!consultas ? (
