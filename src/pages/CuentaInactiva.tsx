@@ -1,24 +1,34 @@
 import { useAuth } from '../auth/useAuth'
+import { AuthLayout } from '../components/AuthLayout'
+import { Boton, Tarjeta } from '../components/ui'
 
 export default function CuentaInactiva() {
   const { user, signOut } = useAuth()
 
   return (
-    <main className="pantalla-login">
-      <div className="tarjeta-login">
-        <h1>Formación WOM</h1>
-        <p>
+    <AuthLayout>
+      <Tarjeta className="p-8 text-center">
+        <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-wom-50 text-3xl">
+          ⏳
+        </div>
+        <h1 className="text-2xl font-extrabold">Cuenta pendiente</h1>
+        <p className="mt-2 text-sm text-tinta-suave">
           Tu cuenta <strong>{user?.email}</strong> fue creada, pero todavía no
           está activada. Un administrador debe habilitarla antes de que puedas
           entrar a la plataforma.
         </p>
-        <p className="subtitulo">
+        <p className="mt-2 text-sm text-tinta-suave">
           Si crees que es un error, contacta a tu coordinador de formación.
         </p>
-        <button type="button" onClick={() => void signOut()}>
+        <Boton
+          type="button"
+          variante="secundario"
+          className="mt-6"
+          onClick={() => void signOut()}
+        >
           Cerrar sesión
-        </button>
-      </div>
-    </main>
+        </Boton>
+      </Tarjeta>
+    </AuthLayout>
   )
 }

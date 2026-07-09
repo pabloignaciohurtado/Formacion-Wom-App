@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import { AuthLayout } from '../components/AuthLayout'
+import { Boton, Campo, MensajeError, Tarjeta } from '../components/ui'
 
 export default function Login() {
   const { session, signIn } = useAuth()
@@ -28,43 +30,54 @@ export default function Login() {
   }
 
   return (
-    <main className="pantalla-login">
-      <form className="tarjeta-login" onSubmit={handleSubmit}>
-        <h1>Formación WOM</h1>
-        <p className="subtitulo">Ingresa con tu cuenta para continuar</p>
-
-        <label htmlFor="email">Correo electrónico</label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <label htmlFor="password">Contraseña</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        {error && <p role="alert" className="mensaje-error">{error}</p>}
-
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Ingresando…' : 'Ingresar'}
-        </button>
-
-        <p className="subtitulo">
-          ¿No tienes cuenta? <Link to="/registro">Regístrate</Link>
-          <br />
-          <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+    <AuthLayout>
+      <Tarjeta className="p-8">
+        <h1 className="text-2xl font-extrabold">Hola de nuevo 👋</h1>
+        <p className="mb-6 mt-1 text-sm text-tinta-suave">
+          Ingresa con tu cuenta para continuar
         </p>
-      </form>
-    </main>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Campo
+            etiqueta="Correo electrónico"
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Campo
+            etiqueta="Contraseña"
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error && <MensajeError>{error}</MensajeError>}
+
+          <Boton type="submit" disabled={enviando} className="w-full">
+            {enviando ? 'Ingresando…' : 'Ingresar'}
+          </Boton>
+        </form>
+
+        <div className="mt-6 space-y-1 text-center text-sm text-tinta-suave">
+          <p>
+            ¿No tienes cuenta?{' '}
+            <Link to="/registro" className="font-semibold text-wom-600 hover:underline">
+              Regístrate
+            </Link>
+          </p>
+          <p>
+            <Link to="/recuperar" className="font-semibold text-wom-600 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </p>
+        </div>
+      </Tarjeta>
+    </AuthLayout>
   )
 }

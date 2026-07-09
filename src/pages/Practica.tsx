@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { Check, X, PartyPopper } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { obtenerDominio, type Ejercicio } from '../data/contenido'
 import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
+import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 
 const EJERCICIOS_POR_SESION = 10
 
@@ -41,7 +43,6 @@ export default function Practica() {
       })
       const nuevos = dominio.ejercicios.filter((e) => !conTarjeta.has(e.id))
       // Prioridad: repasos vencidos, luego ejercicios nunca vistos.
-      // Si no hay nada pendiente, se permite repasar todo el dominio.
       let sesion = [...pendientes, ...nuevos].slice(0, EJERCICIOS_POR_SESION)
       if (sesion.length === 0) {
         sesion = dominio.ejercicios.slice(0, EJERCICIOS_POR_SESION)
@@ -128,50 +129,76 @@ export default function Practica() {
   }
 
   if (fase === 'cargando') {
-    return <p className="estado-carga">Preparando sesión…</p>
+    return <EstadoCarga texto="Preparando sesión…" />
   }
 
   if (fase === 'resumen' || cola.length === 0) {
     return (
-      <section>
-        <h2>{dominio.titulo}</h2>
+      <section className="mx-auto max-w-xl">
+        <h1 className="text-2xl font-extrabold">{dominio.titulo}</h1>
         {cola.length === 0 ? (
-          <p>No hay ejercicios disponibles en este dominio.</p>
+          <p className="mt-4 text-tinta-suave">
+            No hay ejercicios disponibles en este dominio.
+          </p>
         ) : (
-          <div className="tarjeta-quiz">
-            <h3>Sesión terminada</h3>
-            <p>
-              Acertaste <strong>{correctas}</strong> de{' '}
-              <strong>{cola.length}</strong>. Los aciertos se agendaron más
-              lejos; los errores volverán pronto a tu repaso.
+          <Tarjeta className="mt-6 p-8 text-center">
+            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-exito/15 text-exito">
+              <PartyPopper className="size-8" />
+            </div>
+            <h2 className="text-xl font-extrabold">Sesión terminada</h2>
+            <p className="mt-2 text-tinta-suave">
+              Acertaste <strong className="text-tinta">{correctas}</strong> de{' '}
+              <strong className="text-tinta">{cola.length}</strong>. Los
+              aciertos se agendaron más lejos; los errores volverán pronto.
             </p>
-          </div>
+          </Tarjeta>
         )}
-        <p>
-          <Link className="boton-enlace" to="/ejercicios">
-            Volver a ejercicios
-          </Link>
-        </p>
+        <Link
+          to="/ejercicios"
+          className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+        >
+          ← Volver a ejercicios
+        </Link>
       </section>
     )
   }
 
-  return (
-    <section>
-      <h2>{dominio.titulo}</h2>
-      <p className="meta-consulta">
-        Pregunta {indice + 1} de {cola.length}
-        {objetivo && ` · ${objetivo.titulo}`}
-      </p>
+  const progreso = ((indice + (fase === 'feedback' ? 1 : 0)) / cola.length) * 100
 
-      <div className="tarjeta-quiz">
-        <p className="enunciado">{ejercicio.enunciado}</p>
-        <div className="opciones">
+  return (
+    <section className="mx-auto max-w-xl">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-extrabold">{dominio.titulo}</h1>
+        <span className="text-sm font-semibold text-tinta-suave">
+          {indice + 1}/{cola.length}
+        </span>
+      </div>
+      {objetivo && (
+        <p className="mt-0.5 text-sm text-tinta-suave">{objetivo.titulo}</p>
+      )}
+
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 transition-all duration-500"
+          style={{ width: `${progreso}%` }}
+        />
+      </div>
+
+      <Tarjeta className="mt-6">
+        <p className="text-lg font-bold">{ejercicio.enunciado}</p>
+
+        <div className="mt-5 space-y-2.5">
           {ejercicio.opciones.map((opcion, i) => {
-            let clase = 'opcion'
-            if (fase === 'feedback') {
-              if (i === ejercicio.correcta) clase += ' opcion-correcta'
-              else if (i === seleccion) clase += ' opcion-incorrecta'
+            let clase =
+              'w-full rounded-xl border-2 border-transparent bg-niebla px-4 py-3 text-left font-medium transition-all'
+            if (fase === 'pregunta') {
+              clase += ' hover:border-wom-600 hover:bg-white cursor-pointer'
+            } else if (i === ejercicio.correcta) {
+              clase += ' border-exito bg-exito/10'
+            } else if (i === seleccion) {
+              clase += ' border-red-400 bg-red-50'
+            } else {
+              clase += ' opacity-50'
             }
             return (
               <button
@@ -181,27 +208,45 @@ export default function Practica() {
                 disabled={fase === 'feedback'}
                 onClick={() => void responder(i)}
               >
-                {opcion}
+                <span className="flex items-center justify-between gap-3">
+                  {opcion}
+                  {fase === 'feedback' && i === ejercicio.correcta && (
+                    <Check className="size-5 shrink-0 text-exito" />
+                  )}
+                  {fase === 'feedback' &&
+                    i === seleccion &&
+                    i !== ejercicio.correcta && (
+                      <X className="size-5 shrink-0 text-red-500" />
+                    )}
+                </span>
               </button>
             )
           })}
         </div>
 
         {fase === 'feedback' && (
-          <div className="feedback">
-            <p>
-              <strong>
-                {seleccion === ejercicio.correcta ? '✔ Correcto.' : '✘ Incorrecto.'}
-              </strong>{' '}
+          <div className="mt-5 border-t border-niebla pt-5">
+            <p
+              className={`font-bold ${
+                seleccion === ejercicio.correcta ? 'text-exito' : 'text-red-500'
+              }`}
+            >
+              {seleccion === ejercicio.correcta ? '¡Correcto!' : 'Incorrecto'}
+            </p>
+            <p className="mt-1 text-sm text-tinta-suave">
               {ejercicio.explicacion}
             </p>
-            {error && <p role="alert" className="mensaje-error">{error}</p>}
-            <button type="button" onClick={siguiente}>
+            {error && (
+              <div className="mt-3">
+                <MensajeError>{error}</MensajeError>
+              </div>
+            )}
+            <Boton type="button" onClick={siguiente} className="mt-4 w-full">
               {indice + 1 >= cola.length ? 'Ver resumen' : 'Siguiente'}
-            </button>
+            </Boton>
           </div>
         )}
-      </div>
+      </Tarjeta>
     </section>
   )
 }

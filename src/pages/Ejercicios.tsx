@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { DOMINIOS } from '../data/contenido'
 import { estaPendiente, maestriaDominio } from '../lib/srs'
+import { EstadoCarga, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Meta = Tables<'goals'>
@@ -57,39 +59,53 @@ export default function Ejercicios() {
 
   return (
     <section>
-      <h2>Ejercicios</h2>
-      <p>
-        Practica por dominio. Los ejercicios que respondas se agendan para
-        repaso espaciado: acertar los aleja, fallar los trae de vuelta.
+      <h1 className="text-2xl font-extrabold lg:text-3xl">Ejercicios</h1>
+      <p className="mt-1 text-tinta-suave">
+        Practica por dominio: acertar espacia el repaso, fallar lo trae de
+        vuelta.
       </p>
 
       {!estados ? (
-        <p className="estado-carga">Cargando avance…</p>
+        <EstadoCarga texto="Cargando avance…" />
       ) : (
-        <div className="tarjetas-resumen">
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {DOMINIOS.map((dominio) => {
             const estado = estados[dominio.id]
             const porHacer = estado.pendientes + estado.nuevos
             return (
-              <article key={dominio.id} className="tarjeta-dominio">
-                <h3>{dominio.titulo}</h3>
-                <p className="descripcion-dominio">{dominio.descripcion}</p>
-                <div className="barra-maestria">
-                  <div
-                    className="barra-maestria-avance"
-                    style={{ width: `${estado.maestria}%` }}
-                  />
+              <Tarjeta key={dominio.id} className="flex flex-col gap-3">
+                <div>
+                  <h2 className="font-bold text-wom-600">{dominio.titulo}</h2>
+                  <p className="mt-0.5 text-sm text-tinta-suave">
+                    {dominio.descripcion}
+                  </p>
                 </div>
-                <p className="meta-consulta">
-                  Maestría {estado.maestria}%
-                  {estado.meta && ` · meta ${estado.meta.maestria_objetivo}%`}
-                  {' · '}
+
+                <div>
+                  <div className="mb-1 flex justify-between text-xs font-semibold text-tinta-suave">
+                    <span>Maestría {estado.maestria}%</span>
+                    {estado.meta && <span>Meta {estado.meta.maestria_objetivo}%</span>}
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-niebla">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 transition-all duration-500"
+                      style={{ width: `${estado.maestria}%` }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-tinta-suave">
                   {estado.pendientes} por repasar · {estado.nuevos} nuevos
                 </p>
-                <Link className="boton-enlace" to={`/ejercicios/${dominio.id}`}>
-                  {porHacer > 0 ? 'Practicar' : 'Repasar igual'}
+
+                <Link
+                  to={`/ejercicios/${dominio.id}`}
+                  className="mt-auto inline-flex items-center justify-between rounded-xl bg-wom-600 px-4 py-2.5 font-semibold text-white transition-all hover:bg-wom-700 active:scale-[0.98]"
+                >
+                  {porHacer > 0 ? `Practicar (${porHacer})` : 'Repasar igual'}
+                  <ChevronRight className="size-5" />
                 </Link>
-              </article>
+              </Tarjeta>
             )
           })}
         </div>
