@@ -28,6 +28,42 @@ export interface Dominio {
   ejercicios: Ejercicio[]
 }
 
+export interface Categoria {
+  id: string
+  titulo: string
+  icono: string
+  dominios: string[]
+}
+
+// Agrupación lógica de los dominios para la pantalla de Ejercicios.
+export const CATEGORIAS: Categoria[] = [
+  {
+    id: 'productos',
+    titulo: 'Productos y Servicios',
+    icono: '🛒',
+    dominios: [
+      'portabilidad',
+      'planes',
+      'prepago',
+      'equipos',
+      'boleta-pagos',
+      'servicios-adicionales',
+    ],
+  },
+  {
+    id: 'tecnico',
+    titulo: 'Técnico y Conectividad',
+    icono: '🔧',
+    dominios: ['internet-fibra', 'internet-movil', 'roaming', 'servicio-tecnico'],
+  },
+  {
+    id: 'habilidades',
+    titulo: 'Habilidades',
+    icono: '🎯',
+    dominios: ['atencion-cliente', 'tecnicas-formacion'],
+  },
+]
+
 export const DOMINIOS: Dominio[] = [
   {
     id: 'portabilidad',
