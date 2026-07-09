@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Award, ChevronDown, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORIAS, DOMINIOS, type Dominio } from '../data/contenido'
 import { estaPendiente, maestriaDominio } from '../lib/srs'
+import { descargarCertificado } from '../lib/certificado'
 import { Esqueleto, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
@@ -22,10 +23,12 @@ function TarjetaDominio({
   dominio,
   estado,
   indice,
+  nombrePerfil,
 }: {
   dominio: Dominio
   estado: EstadoDominio
   indice: number
+  nombrePerfil: string
 }) {
   const porHacer = estado.pendientes + estado.nuevos
   return (
@@ -72,13 +75,24 @@ function TarjetaDominio({
           {porHacer > 0 ? `Practicar (${porHacer})` : 'Repasar igual'}
           <ChevronRight className="size-5" />
         </Link>
+
+        {estado.maestria === 100 && (
+          <button
+            type="button"
+            onClick={() => descargarCertificado(nombrePerfil, dominio.titulo)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-exito px-4 py-2 font-semibold text-exito transition-colors hover:bg-exito/10"
+          >
+            <Award className="size-5" />
+            Descargar certificado
+          </button>
+        )}
       </Tarjeta>
     </motion.div>
   )
 }
 
 export default function Ejercicios() {
-  const { user } = useAuth()
+  const { user, perfil } = useAuth()
   const [estados, setEstados] = useState<Record<string, EstadoDominio> | null>(
     null
   )
@@ -217,6 +231,7 @@ export default function Ejercicios() {
                             dominio={dominio}
                             estado={estados[dominio.id]}
                             indice={i}
+                            nombrePerfil={perfil?.nombre ?? ''}
                           />
                         ))}
                       </div>

@@ -6,7 +6,15 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Esqueleto, Tarjeta } from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
+import { InsigniaModal } from '../components/InsigniaModal'
 import { nivelDe, xpTotal } from '../lib/gamificacion'
+import { DOMINIOS } from '../data/contenido'
+import { maestriaDominio } from '../lib/srs'
+import {
+  INSIGNIAS,
+  sincronizarInsignias,
+  type Insignia,
+} from '../lib/insignias'
 
 interface Datos {
   intentos: number
@@ -20,6 +28,7 @@ interface Datos {
     posicion: number
   }[]
   heroes: { nombre: string; xp: number; posicion: number }[]
+  insignias: Set<string>
 }
 
 const MEDALLAS = ['🥇', '🥈', '🥉']
@@ -27,34 +36,57 @@ const MEDALLAS = ['🥇', '🥈', '🥉']
 export default function Panel() {
   const { user, perfil } = useAuth()
   const [datos, setDatos] = useState<Datos | null>(null)
+  const [colaInsignias, setColaInsignias] = useState<Insignia[]>([])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !perfil) return
     let cancelado = false
 
     const cargar = async () => {
       const ahora = new Date().toISOString()
-      const [intentos, correctas, repasos, racha, ranking, heroes] =
-        await Promise.all([
-          supabase
-            .from('attempts')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id),
-          supabase
-            .from('attempts')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('correcto', true),
-          supabase
-            .from('srs_cards')
-            .select('exercise_id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .lte('proximo_repaso', ahora),
-          supabase.rpc('mi_racha'),
-          supabase.rpc('ranking_semanal'),
-          supabase.rpc('heroes_semana'),
-        ])
+      const [
+        intentos,
+        correctas,
+        repasos,
+        racha,
+        ranking,
+        heroes,
+        cards,
+        actividades,
+        completadas,
+        obtenidas,
+      ] = await Promise.all([
+        supabase
+          .from('attempts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+        supabase
+          .from('attempts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('correcto', true),
+        supabase
+          .from('srs_cards')
+          .select('exercise_id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .lte('proximo_repaso', ahora),
+        supabase.rpc('mi_racha'),
+        supabase.rpc('ranking_semanal'),
+        supabase.rpc('heroes_semana'),
+        supabase.from('srs_cards').select('exercise_id, domain_id, caja').eq('user_id', user.id),
+        supabase.from('actividades').select('id').eq('activa', true),
+        supabase
+          .from('actividades_completadas')
+          .select('actividad_id')
+          .eq('user_id', user.id),
+        supabase
+          .from('insignias_usuario')
+          .select('insignia_id')
+          .eq('user_id', user.id),
+      ])
       if (cancelado) return
+
+      const insignias = new Set((obtenidas.data ?? []).map((i) => i.insignia_id))
       setDatos({
         intentos: intentos.count ?? 0,
         correctas: correctas.count ?? 0,
@@ -62,14 +94,54 @@ export default function Panel() {
         racha: racha.data ?? 0,
         ranking: ranking.data ?? [],
         heroes: heroes.data ?? [],
+        insignias,
       })
+
+      // Evaluar y otorgar insignias nuevas
+      const tarjetas = cards.data ?? []
+      const tieneDominio100 = DOMINIOS.some((d) => {
+        const delDominio = tarjetas.filter((c) => c.domain_id === d.id)
+        return (
+          delDominio.length > 0 &&
+          maestriaDominio(delDominio, d.ejercicios.length) === 100
+        )
+      })
+      const idsActivas = new Set((actividades.data ?? []).map((a) => a.id))
+      const hechas = new Set((completadas.data ?? []).map((c) => c.actividad_id))
+      const obligatoriasAlDia =
+        idsActivas.size > 0 && [...idsActivas].every((id) => hechas.has(id))
+      const nuevas = await sincronizarInsignias(
+        user.id,
+        {
+          intentos: intentos.count ?? 0,
+          racha: racha.data ?? 0,
+          tieneDominio100,
+          fueHeroe: (heroes.data ?? []).some((h) => h.nombre === perfil.nombre),
+          obligatoriasAlDia,
+        },
+        insignias
+      )
+      if (!cancelado && nuevas.length > 0) {
+        setColaInsignias(nuevas)
+        setDatos((prev) =>
+          prev
+            ? {
+                ...prev,
+                insignias: new Set([
+                  ...prev.insignias,
+                  ...nuevas.map((n) => n.id),
+                ]),
+              }
+            : prev
+        )
+      }
     }
 
     void cargar()
     return () => {
       cancelado = true
     }
-  }, [user])
+  }, [user, perfil])
 
   const nombrePila = (perfil?.nombre ?? '').split(/[\s.]+/)[0] || 'relator'
 
@@ -174,8 +246,14 @@ export default function Panel() {
               </span>
               <div>
                 <p className="text-3xl font-extrabold">
-                  {prefijo}
-                  <ContadorAnimado valor={valor} />
+                  {prefijo && valor === 0 ? (
+                    '—'
+                  ) : (
+                    <>
+                      {prefijo}
+                      <ContadorAnimado valor={valor} />
+                    </>
+                  )}
                 </p>
                 <p className="text-sm text-tinta-suave">{etiqueta}</p>
               </div>
@@ -223,6 +301,30 @@ export default function Panel() {
         </>
       )}
 
+      {/* Vitrina de insignias */}
+      <h2 className="mt-8 text-lg font-bold">Tus insignias</h2>
+      <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-9">
+        {INSIGNIAS.map((insignia) => {
+          const obtenida = datos.insignias.has(insignia.id)
+          return (
+            <Tarjeta
+              key={insignia.id}
+              className={`flex flex-col items-center gap-1 p-3 text-center ${
+                obtenida ? '' : 'opacity-45 grayscale'
+              }`}
+            >
+              <span className="text-3xl">{obtenida ? insignia.icono : '🔒'}</span>
+              <span className="text-xs font-bold leading-tight">
+                {insignia.nombre}
+              </span>
+              <span className="text-[10px] leading-tight text-tinta-suave">
+                {insignia.descripcion}
+              </span>
+            </Tarjeta>
+          )
+        })}
+      </div>
+
       {/* Ranking semanal */}
       <h2 className="mt-8 text-lg font-bold">Ranking de la semana</h2>
       <Tarjeta className="mt-3 p-0">
@@ -260,6 +362,11 @@ export default function Panel() {
           })}
         </ul>
       </Tarjeta>
+
+      <InsigniaModal
+        insignia={colaInsignias[0] ?? null}
+        onCerrar={() => setColaInsignias((cola) => cola.slice(1))}
+      />
     </section>
   )
 }
