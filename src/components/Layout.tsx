@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { motion } from 'motion/react'
 import {
   LayoutDashboard,
   Dumbbell,
@@ -26,6 +27,7 @@ function clasesNav(activo: boolean, movil = false) {
 
 export function Layout() {
   const { perfil, user, signOut } = useAuth()
+  const location = useLocation()
   const esAdmin = perfil?.role === 'admin'
   const iniciales = (perfil?.nombre ?? user?.email ?? '?')
     .split(/[\s.@]+/)
@@ -102,9 +104,16 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Contenido */}
+      {/* Contenido con transición entre páginas */}
       <main className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 lg:px-8 lg:pb-10">
-        <Outlet />
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+          <Outlet />
+        </motion.div>
       </main>
 
       {/* Bottom nav móvil */}
