@@ -71,6 +71,12 @@ export function MensajeError({ children }: { children: ReactNode }) {
   )
 }
 
+export function Esqueleto({ className = '' }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-2xl bg-gray-300/50 ${className}`} />
+  )
+}
+
 export function EstadoCarga({ texto = 'Cargando…' }: { texto?: string }) {
   return (
     <div className="flex items-center justify-center gap-3 p-10 text-tinta-suave">

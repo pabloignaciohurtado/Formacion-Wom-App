@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
+import { motion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { DOMINIOS } from '../data/contenido'
 import { estaPendiente, maestriaDominio } from '../lib/srs'
-import { EstadoCarga, Tarjeta } from '../components/ui'
+import { Esqueleto, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Meta = Tables<'goals'>
@@ -66,14 +67,25 @@ export default function Ejercicios() {
       </p>
 
       {!estados ? (
-        <EstadoCarga texto="Cargando avance…" />
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {DOMINIOS.map((d) => (
+            <Esqueleto key={d.id} className="h-56" />
+          ))}
+        </div>
       ) : (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {DOMINIOS.map((dominio) => {
+          {DOMINIOS.map((dominio, i) => {
             const estado = estados[dominio.id]
             const porHacer = estado.pendientes + estado.nuevos
             return (
-              <Tarjeta key={dominio.id} className="flex flex-col gap-3">
+              <motion.div
+                key={dominio.id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.35, ease: 'easeOut' }}
+                className="h-full"
+              >
+                <Tarjeta className="flex h-full flex-col gap-3">
                 <div>
                   <h2 className="font-bold text-wom-600">{dominio.titulo}</h2>
                   <p className="mt-0.5 text-sm text-tinta-suave">
@@ -87,9 +99,11 @@ export default function Ejercicios() {
                     {estado.meta && <span>Meta {estado.meta.maestria_objetivo}%</span>}
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-niebla">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 transition-all duration-500"
-                      style={{ width: `${estado.maestria}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${estado.maestria}%` }}
+                      transition={{ delay: 0.25 + i * 0.07, duration: 0.7, ease: 'easeOut' }}
+                      className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500"
                     />
                   </div>
                 </div>
@@ -105,7 +119,8 @@ export default function Ejercicios() {
                   {porHacer > 0 ? `Practicar (${porHacer})` : 'Repasar igual'}
                   <ChevronRight className="size-5" />
                 </Link>
-              </Tarjeta>
+                </Tarjeta>
+              </motion.div>
             )
           })}
         </div>

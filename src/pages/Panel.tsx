@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Dumbbell, Target, MessageCircleQuestion, Flame } from 'lucide-react'
+import { motion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
-import { EstadoCarga, Tarjeta } from '../components/ui'
+import { Esqueleto, Tarjeta } from '../components/ui'
+import { ContadorAnimado } from '../components/ContadorAnimado'
 
 interface Resumen {
   intentos: number
@@ -94,20 +96,33 @@ export default function Panel() {
       <p className="mt-1 text-tinta-suave">Este es tu estado de formación.</p>
 
       {!resumen ? (
-        <EstadoCarga texto="Cargando resumen…" />
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {tarjetas.map(({ clave }) => (
+            <Esqueleto key={clave} className="h-36" />
+          ))}
+        </div>
       ) : (
         <>
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {tarjetas.map(({ clave, etiqueta, Icono, color }) => (
-              <Tarjeta key={clave} className="flex flex-col gap-3">
-                <span className={`grid size-10 place-items-center rounded-xl ${color}`}>
-                  <Icono className="size-5" />
-                </span>
-                <div>
-                  <p className="text-3xl font-extrabold">{resumen[clave]}</p>
-                  <p className="text-sm text-tinta-suave">{etiqueta}</p>
-                </div>
-              </Tarjeta>
+            {tarjetas.map(({ clave, etiqueta, Icono, color }, i) => (
+              <motion.div
+                key={clave}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07, duration: 0.35, ease: 'easeOut' }}
+              >
+                <Tarjeta className="flex h-full flex-col gap-3">
+                  <span className={`grid size-10 place-items-center rounded-xl ${color}`}>
+                    <Icono className="size-5" />
+                  </span>
+                  <div>
+                    <p className="text-3xl font-extrabold">
+                      <ContadorAnimado valor={resumen[clave]} />
+                    </p>
+                    <p className="text-sm text-tinta-suave">{etiqueta}</p>
+                  </div>
+                </Tarjeta>
+              </motion.div>
             ))}
           </div>
 
