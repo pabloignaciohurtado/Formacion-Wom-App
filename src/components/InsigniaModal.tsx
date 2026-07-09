@@ -7,9 +7,11 @@ import { Boton } from './ui'
 export function InsigniaModal({
   insignia,
   onCerrar,
+  titulo = '¡Nueva insignia!',
 }: {
   insignia: Insignia | null
   onCerrar: () => void
+  titulo?: string
 }) {
   useEffect(() => {
     if (!insignia) return
@@ -40,7 +42,7 @@ export function InsigniaModal({
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-bold uppercase tracking-widest text-magenta-500">
-              ¡Nueva insignia!
+              {titulo}
             </p>
             <motion.div
               initial={{ rotate: -15, scale: 0 }}
