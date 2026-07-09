@@ -7,7 +7,7 @@ import { useAuth } from '../auth/useAuth'
 import { Esqueleto, Tarjeta } from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 import { InsigniaModal } from '../components/InsigniaModal'
-import { nivelDe, xpTotal } from '../lib/gamificacion'
+import { LIGAS, ligaDe, nivelDe, xpTotal } from '../lib/gamificacion'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
 import {
@@ -24,6 +24,7 @@ interface Datos {
   ranking: {
     user_id: string
     nombre: string
+    liga: string
     xp: number
     posicion: number
   }[]
@@ -37,6 +38,7 @@ export default function Panel() {
   const { user, perfil } = useAuth()
   const [datos, setDatos] = useState<Datos | null>(null)
   const [colaInsignias, setColaInsignias] = useState<Insignia[]>([])
+  const [cambioLiga, setCambioLiga] = useState<Insignia | null>(null)
 
   useEffect(() => {
     if (!user || !perfil) return
@@ -44,6 +46,8 @@ export default function Panel() {
 
     const cargar = async () => {
       const ahora = new Date().toISOString()
+      // Procesa el corte de ligas si esta semana aún no se hizo (idempotente)
+      await supabase.rpc('asegurar_corte_semanal')
       const [
         intentos,
         correctas,
@@ -143,6 +147,28 @@ export default function Panel() {
     }
   }, [user, perfil])
 
+  // Anuncio de ascenso/descenso de liga (comparado con la última vista)
+  useEffect(() => {
+    if (!user || !perfil) return
+    const clave = `liga-vista-${user.id}`
+    const anterior = window.localStorage.getItem(clave)
+    if (anterior && anterior !== perfil.liga) {
+      const idxAntes = LIGAS.findIndex((l) => l.id === anterior)
+      const idxAhora = LIGAS.findIndex((l) => l.id === perfil.liga)
+      const liga = ligaDe(perfil.liga)
+      const subio = idxAhora > idxAntes
+      setCambioLiga({
+        id: `liga-${perfil.liga}`,
+        icono: liga.icono,
+        nombre: subio ? `¡Subiste a ${liga.nombre}!` : `Bajaste a ${liga.nombre}`,
+        descripcion: subio
+          ? 'Tu semana pasada te llevó a la liga superior. ¡Defiende tu lugar!'
+          : 'Una semana sin práctica baja de liga. ¡Esta semana se recupera!',
+      })
+    }
+    window.localStorage.setItem(clave, perfil.liga)
+  }, [user, perfil])
+
   const nombrePila = (perfil?.nombre ?? '').split(/[\s.]+/)[0] || 'relator'
 
   if (!datos) {
@@ -204,9 +230,16 @@ export default function Panel() {
           </h1>
           <p className="mt-1 text-tinta-suave">Este es tu estado de formación.</p>
         </div>
-        <span className="rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 px-4 py-1.5 text-sm font-bold text-white shadow-lg shadow-wom-600/20">
-          {nivel.actual.nombre}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full bg-gradient-to-r ${ligaDe(perfil?.liga).clase} px-4 py-1.5 text-sm font-bold text-white shadow-lg`}
+          >
+            {ligaDe(perfil?.liga).icono} {ligaDe(perfil?.liga).nombre}
+          </span>
+          <span className="rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 px-4 py-1.5 text-sm font-bold text-white shadow-lg shadow-wom-600/20">
+            {nivel.actual.nombre}
+          </span>
+        </div>
       </div>
 
       {/* Nivel y progreso */}
@@ -346,6 +379,9 @@ export default function Panel() {
                   {MEDALLAS[r.posicion - 1] ?? `#${r.posicion}`}
                 </span>
                 <span className="flex-1 font-semibold">
+                  <span className="mr-1" title={ligaDe(r.liga).nombre}>
+                    {ligaDe(r.liga).icono}
+                  </span>
                   {r.nombre}
                   {esYo && (
                     <span className="ml-2 rounded-full bg-wom-600 px-2 py-0.5 text-xs font-bold text-white">
@@ -366,6 +402,11 @@ export default function Panel() {
       <InsigniaModal
         insignia={colaInsignias[0] ?? null}
         onCerrar={() => setColaInsignias((cola) => cola.slice(1))}
+      />
+      <InsigniaModal
+        insignia={cambioLiga}
+        titulo="Corte semanal de ligas"
+        onCerrar={() => setCambioLiga(null)}
       />
     </section>
   )

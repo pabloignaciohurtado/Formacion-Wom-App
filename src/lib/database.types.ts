@@ -285,6 +285,7 @@ export type Database = {
           creado_en: string
           email: string
           id: string
+          liga: string
           nombre: string
           role: string
         }
@@ -368,11 +369,13 @@ export type Database = {
     Functions: {
       is_admin: { Args: never; Returns: boolean }
       mi_racha: { Args: never; Returns: number }
+      asegurar_corte_semanal: { Args: never; Returns: boolean }
       ranking_semanal: {
         Args: never
         Returns: {
           user_id: string
           nombre: string
+          liga: string
           xp: number
           intentos: number
           correctas: number
