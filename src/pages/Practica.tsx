@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { obtenerDominio, type Ejercicio } from '../data/contenido'
 import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
+import { encolarOffline } from '../lib/colaOffline'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 
@@ -121,41 +122,54 @@ export default function Practica() {
     setXp((x) => x + ganado)
     setXpFlotante({ id: Date.now(), cantidad: ganado })
 
-    const { data: cardActual } = await supabase
-      .from('srs_cards')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('exercise_id', ejercicio.id)
-      .maybeSingle()
+    let cardActual = null
+    if (navigator.onLine) {
+      const { data } = await supabase
+        .from('srs_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('exercise_id', ejercicio.id)
+        .maybeSingle()
+      cardActual = data
+    }
 
     const caja = siguienteCaja(cardActual?.caja ?? 1, correcto)
     const ahora = new Date().toISOString()
+    const payloadIntento = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      exercise_id: ejercicio.id,
+      domain_id: dominio.id,
+      objetivo_id: ejercicio.objetivoId,
+      puntaje: correcto ? 100 : 0,
+      correcto,
+      fecha: ahora,
+    }
+    const payloadTarjeta = {
+      user_id: user.id,
+      exercise_id: ejercicio.id,
+      domain_id: dominio.id,
+      caja,
+      repasos: (cardActual?.repasos ?? 0) + 1,
+      ultimo_resultado: correcto,
+      proximo_repaso: proximoRepaso(caja),
+      actualizada: ahora,
+    }
+
+    // Sin conexión: se encola y se sincroniza al volver la red
+    if (!navigator.onLine) {
+      encolarOffline({ intento: payloadIntento, tarjeta: payloadTarjeta })
+      return
+    }
 
     const [intento, tarjeta] = await Promise.all([
-      supabase.from('attempts').insert({
-        id: crypto.randomUUID(),
-        user_id: user.id,
-        exercise_id: ejercicio.id,
-        domain_id: dominio.id,
-        objetivo_id: ejercicio.objetivoId,
-        puntaje: correcto ? 100 : 0,
-        correcto,
-      }),
-      supabase.from('srs_cards').upsert({
-        user_id: user.id,
-        exercise_id: ejercicio.id,
-        domain_id: dominio.id,
-        caja,
-        repasos: (cardActual?.repasos ?? 0) + 1,
-        ultimo_resultado: correcto,
-        proximo_repaso: proximoRepaso(caja),
-        actualizada: ahora,
-      }),
+      supabase.from('attempts').insert(payloadIntento),
+      supabase.from('srs_cards').upsert(payloadTarjeta),
     ])
     if (intento.error || tarjeta.error) {
+      encolarOffline({ intento: payloadIntento, tarjeta: payloadTarjeta })
       setError(
-        'No se pudo guardar el intento: ' +
-          (intento.error?.message ?? tarjeta.error?.message ?? '')
+        'Sin conexión con el servidor: el intento quedó guardado en este dispositivo y se sincronizará solo.'
       )
     }
   }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import {
@@ -7,8 +8,11 @@ import {
   MessageCircleQuestion,
   ShieldCheck,
   LogOut,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
+import { sincronizarOffline } from '../lib/colaOffline'
 import { MarcaWom } from './MarcaWom'
 
 const enlaces = [
@@ -30,6 +34,24 @@ function clasesNav(activo: boolean, movil = false) {
 export function Layout() {
   const { perfil, user, signOut } = useAuth()
   const location = useLocation()
+  const [oscuro, setOscuro] = useState(() =>
+    document.documentElement.classList.contains('dark')
+  )
+
+  const alternarTema = () => {
+    const nuevo = !oscuro
+    setOscuro(nuevo)
+    document.documentElement.classList.toggle('dark', nuevo)
+    window.localStorage.setItem('tema', nuevo ? 'oscuro' : 'claro')
+  }
+
+  // Sincroniza intentos hechos sin conexión al montar y al volver la red
+  useEffect(() => {
+    void sincronizarOffline()
+    const alVolver = () => void sincronizarOffline()
+    window.addEventListener('online', alVolver)
+    return () => window.removeEventListener('online', alVolver)
+  }, [])
   const esAdmin = perfil?.role === 'admin'
   const iniciales = (perfil?.nombre ?? user?.email ?? '?')
     .split(/[\s.@]+/)
@@ -86,6 +108,14 @@ export function Layout() {
           Plataforma de formación interna
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={alternarTema}
+            aria-label={oscuro ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+            className="grid size-9 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-niebla"
+          >
+            {oscuro ? <Sun className="size-5" /> : <Moon className="size-5" />}
+          </button>
           <div className="text-right leading-tight hidden sm:block">
             <p className="text-sm font-semibold">{perfil?.nombre ?? user?.email}</p>
             <p className="text-xs text-tinta-suave">

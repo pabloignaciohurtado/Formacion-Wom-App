@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Identidad WOM — paleta extraída de wom.cl (womstrap v2.1) */
 @theme {
   --color-wom-50: #f5effc;
@@ -19,6 +21,21 @@
   --color-niebla: #eff1f3;
 
   --font-sans: 'Poppins', system-ui, sans-serif;
+}
+
+/* Modo oscuro: se redefinen los tokens, así todos los componentes
+   cambian sin tocar sus clases. */
+.dark {
+  --color-white: #221a30;
+  --color-niebla: #140e1e;
+  --color-tinta: #f2eef8;
+  --color-tinta-suave: #b7aec9;
+  --color-wom-50: #322646;
+  --color-gray-200: #3b3152;
+  --color-gray-300: #4b4166;
+  --color-gray-400: #8b81a3;
+  --color-red-50: #3d1f2b;
+  --color-amber-100: #443311;
 }
 
 body {
