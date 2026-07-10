@@ -29,7 +29,9 @@ function diasDesde(fecha: string | null): number | null {
   return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000)
 }
 
-export function AdminEquipo() {
+// `conFicha` controla la columna de la ficha individual: el admin la tiene;
+// un supervisor no, porque esa ruta y sus consultas son de admin.
+export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
   const [equipo, setEquipo] = useState<Fila[] | null>(null)
   const [dificiles, setDificiles] = useState<Dificultad[]>([])
 
@@ -66,7 +68,7 @@ export function AdminEquipo() {
                 <th className="px-5 py-3">Precisión</th>
                 <th className="px-5 py-3">Última práctica</th>
                 <th className="px-5 py-3">Obligatorias</th>
-                <th className="px-5 py-3"></th>
+                {conFicha && <th className="px-5 py-3"></th>}
               </tr>
             </thead>
             <tbody>
@@ -113,14 +115,16 @@ export function AdminEquipo() {
                         <span className="text-xs font-semibold text-exito-texto">al día</span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right">
-                      <Link
-                        to={`/admin/relator/${r.user_id}`}
-                        className="inline-flex items-center gap-0.5 text-sm font-semibold text-wom-600 hover:underline"
-                      >
-                        Ficha <ChevronRight className="size-4" />
-                      </Link>
-                    </td>
+                    {conFicha && (
+                      <td className="px-5 py-3 text-right">
+                        <Link
+                          to={`/admin/relator/${r.user_id}`}
+                          className="inline-flex items-center gap-0.5 text-sm font-semibold text-wom-600 hover:underline"
+                        >
+                          Ficha <ChevronRight className="size-4" />
+                        </Link>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
