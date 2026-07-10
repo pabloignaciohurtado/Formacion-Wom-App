@@ -16,6 +16,7 @@ import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
 import { MarcaWom } from './MarcaWom'
 import { EstadoCarga } from './ui'
+import { ErrorBoundary } from './ErrorBoundary'
 import { EstadoConexion } from './EstadoConexion'
 
 const enlaces = [
@@ -149,12 +150,17 @@ export function Layout() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
         >
-          {/* Suspense aquí y no alrededor del Layout: así el chrome
-              (barra lateral, cabecera) no se desmonta mientras llega el
-              chunk de la página. */}
-          <Suspense fallback={<EstadoCarga />}>
-            <Outlet />
-          </Suspense>
+          {/* El Suspense va dentro del Layout para que el chrome (barra lateral,
+              cabecera) no se desmonte mientras llega el chunk de la página.
+              El ErrorBoundary lo envuelve porque un fallo dentro de una página
+              no debe llevarse la navegación por delante; la `key` lo remonta al
+              cambiar de ruta, así el error se limpia y el relator no queda
+              encerrado en una pantalla muerta. */}
+          <ErrorBoundary key={location.pathname}>
+            <Suspense fallback={<EstadoCarga />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </m.div>
       </main>
 

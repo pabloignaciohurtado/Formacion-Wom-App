@@ -11,6 +11,7 @@ import '@fontsource/poppins/latin-800.css'
 import '@fontsource/poppins/latin-900.css'
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Tema: preferencia guardada o la del sistema
 const tema = window.localStorage.getItem('tema')
@@ -23,6 +24,8 @@ if (
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
