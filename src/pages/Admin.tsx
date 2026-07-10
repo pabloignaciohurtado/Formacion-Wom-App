@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminEquipo } from '../components/AdminEquipo'
+import { etiquetaRol } from '../lib/roles'
 import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
@@ -12,7 +13,7 @@ type Consulta = Tables<'consultas'>
 
 export default function Admin() {
   const { user } = useAuth()
-  const [relatores, setRelatores] = useState<Perfil[] | null>(null)
+  const [usuarios, setUsuarios] = useState<Perfil[] | null>(null)
   const [consultas, setConsultas] = useState<Consulta[] | null>(null)
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +23,7 @@ export default function Admin() {
       supabase.from('profiles').select('*').order('creado_en'),
       supabase.from('consultas').select('*').order('fecha', { ascending: false }),
     ])
-    setRelatores(perfiles.data ?? [])
+    setUsuarios(perfiles.data ?? [])
     setConsultas(pendientes.data ?? [])
   }, [])
 
@@ -82,9 +83,9 @@ export default function Admin() {
         </div>
       )}
 
-      <h2 className="mt-6 text-lg font-bold">Relatores</h2>
-      {!relatores ? (
-        <EstadoCarga texto="Cargando relatores…" />
+      <h2 className="mt-6 text-lg font-bold">Usuarios</h2>
+      {!usuarios ? (
+        <EstadoCarga texto="Cargando usuarios…" />
       ) : (
         <Tarjeta className="mt-3 overflow-x-auto p-0">
           <table className="w-full min-w-[560px] text-sm">
@@ -98,7 +99,7 @@ export default function Admin() {
               </tr>
             </thead>
             <tbody>
-              {relatores.map((r) => (
+              {usuarios.map((r) => (
                 <tr key={r.id} className="border-b border-niebla last:border-0">
                   <td className="px-5 py-3 font-semibold">{r.nombre}</td>
                   <td className="px-5 py-3 text-tinta-suave">{r.email}</td>
@@ -107,10 +108,12 @@ export default function Admin() {
                       className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${
                         r.role === 'admin'
                           ? 'bg-magenta-500/10 text-magenta-500'
-                          : 'bg-wom-600/10 text-wom-600'
+                          : r.role === 'supervisor'
+                            ? 'bg-amber-500/10 text-amber-700'
+                            : 'bg-wom-600/10 text-wom-600'
                       }`}
                     >
-                      {r.role}
+                      {etiquetaRol(r.role)}
                     </span>
                   </td>
                   <td className="px-5 py-3">
@@ -149,9 +152,9 @@ export default function Admin() {
       <AdminEquipo />
 
       <AdminActividades
-        totalActivos={(relatores ?? []).filter((r) => r.activo).length}
+        totalActivos={(usuarios ?? []).filter((r) => r.activo).length}
         nombresPorId={Object.fromEntries(
-          (relatores ?? []).map((r) => [r.id, r.nombre])
+          (usuarios ?? []).map((r) => [r.id, r.nombre])
         )}
       />
 
