@@ -16,34 +16,37 @@ export type Database = {
     Tables: {
       actividades: {
         Row: {
-          id: string
-          titulo: string
+          activa: boolean
+          alcance: string
+          creada_en: string
+          creada_por: string | null
           descripcion: string
           enlace: string | null
           fecha_limite: string | null
-          activa: boolean
-          creada_por: string | null
-          creada_en: string
+          id: string
+          titulo: string
         }
         Insert: {
+          activa?: boolean
+          alcance?: string
+          creada_en?: string
+          creada_por?: string | null
+          descripcion?: string
+          enlace?: string | null
+          fecha_limite?: string | null
           id?: string
           titulo: string
-          descripcion?: string
-          enlace?: string | null
-          fecha_limite?: string | null
-          activa?: boolean
-          creada_por?: string | null
-          creada_en?: string
         }
         Update: {
-          id?: string
-          titulo?: string
+          activa?: boolean
+          alcance?: string
+          creada_en?: string
+          creada_por?: string | null
           descripcion?: string
           enlace?: string | null
           fecha_limite?: string | null
-          activa?: boolean
-          creada_por?: string | null
-          creada_en?: string
+          id?: string
+          titulo?: string
         }
         Relationships: [
           {
@@ -58,18 +61,18 @@ export type Database = {
       actividades_completadas: {
         Row: {
           actividad_id: string
-          user_id: string
           completada_en: string
+          user_id: string
         }
         Insert: {
           actividad_id: string
-          user_id: string
           completada_en?: string
+          user_id: string
         }
         Update: {
           actividad_id?: string
-          user_id?: string
           completada_en?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -88,25 +91,29 @@ export type Database = {
           },
         ]
       }
-      insignias_usuario: {
+      actividades_destinatarios: {
         Row: {
+          actividad_id: string
           user_id: string
-          insignia_id: string
-          obtenida_en: string
         }
         Insert: {
+          actividad_id: string
           user_id: string
-          insignia_id: string
-          obtenida_en?: string
         }
         Update: {
+          actividad_id?: string
           user_id?: string
-          insignia_id?: string
-          obtenida_en?: string
         }
         Relationships: [
           {
-            foreignKeyName: "insignias_usuario_user_id_fkey"
+            foreignKeyName: "actividades_destinatarios_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_destinatarios_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -234,6 +241,21 @@ export type Database = {
           },
         ]
       }
+      cortes_semanales: {
+        Row: {
+          procesado_en: string
+          semana: string
+        }
+        Insert: {
+          procesado_en?: string
+          semana: string
+        }
+        Update: {
+          procesado_en?: string
+          semana?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           asignada_por: string | null
@@ -276,6 +298,32 @@ export type Database = {
           },
         ]
       }
+      insignias_usuario: {
+        Row: {
+          insignia_id: string
+          obtenida_en: string
+          user_id: string
+        }
+        Insert: {
+          insignia_id: string
+          obtenida_en?: string
+          user_id: string
+        }
+        Update: {
+          insignia_id?: string
+          obtenida_en?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insignias_usuario_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           activo: boolean
@@ -288,6 +336,7 @@ export type Database = {
           liga: string
           nombre: string
           role: string
+          supervisor_id: string | null
         }
         Insert: {
           activo?: boolean
@@ -297,8 +346,10 @@ export type Database = {
           creado_en?: string
           email: string
           id: string
+          liga?: string
           nombre: string
           role?: string
+          supervisor_id?: string | null
         }
         Update: {
           activo?: boolean
@@ -308,13 +359,22 @@ export type Database = {
           creado_en?: string
           email?: string
           id?: string
+          liga?: string
           nombre?: string
           role?: string
+          supervisor_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "profiles_alta_por_fkey"
             columns: ["alta_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_supervisor_id_fkey"
+            columns: ["supervisor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -367,46 +427,65 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: { Args: never; Returns: boolean }
-      mi_racha: { Args: never; Returns: number }
       asegurar_corte_semanal: { Args: never; Returns: boolean }
-      resumen_equipo: {
+      es_creador_de_actividad: { Args: { aid: string }; Returns: boolean }
+      es_de_mi_equipo: { Args: { quien: string }; Returns: boolean }
+      es_destinatario: { Args: { aid: string }; Returns: boolean }
+      heroes_semana: {
         Args: never
         Returns: {
-          user_id: string
           nombre: string
-          liga: string
-          xp: number
-          intentos: number
-          correctas: number
-          ultima_actividad: string | null
-          obligatorias_pendientes: number
+          posicion: number
+          puntaje: number
         }[]
       }
+      is_admin: { Args: never; Returns: boolean }
+      is_supervisor: { Args: never; Returns: boolean }
+      mi_racha: { Args: never; Returns: number }
       precision_por_dominio: {
         Args: never
         Returns: {
+          correctas: number
           domain_id: string
           intentos: number
-          correctas: number
           precision_pct: number
+        }[]
+      }
+      puntaje_semanal: {
+        Args: { fin: string; ini: string }
+        Returns: {
+          aciertos: number
+          dias: number
+          obligatorios: number
+          puntaje: number
+          user_id: string
         }[]
       }
       ranking_semanal: {
         Args: never
         Returns: {
-          user_id: string
-          nombre: string
+          aciertos: number
+          dias: number
           liga: string
-          xp: number
-          intentos: number
-          correctas: number
+          nombre: string
+          obligatorios: number
           posicion: number
+          puntaje: number
+          user_id: string
         }[]
       }
-      heroes_semana: {
+      resumen_equipo: {
         Args: never
-        Returns: { nombre: string; xp: number; posicion: number }[]
+        Returns: {
+          correctas: number
+          intentos: number
+          liga: string
+          nombre: string
+          obligatorias_pendientes: number
+          ultima_actividad: string
+          user_id: string
+          xp: number
+        }[]
       }
     }
     Enums: {
