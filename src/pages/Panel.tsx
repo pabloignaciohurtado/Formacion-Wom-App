@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Esqueleto, Tarjeta } from '../components/ui'
+import { clasesBoton } from '../components/estilosBoton'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 import { InsigniaModal } from '../components/InsigniaModal'
 import { LIGAS, ligaDe, nivelDe, xpTotal } from '../lib/gamificacion'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
+import { EASE_OUT, STAGGER } from '../lib/motion'
 import {
   INSIGNIAS,
   sincronizarInsignias,
@@ -36,6 +38,7 @@ const MEDALLAS = ['🥇', '🥈', '🥉']
 
 export default function Panel() {
   const { user, perfil } = useAuth()
+  const reduce = useReducedMotion()
   const [datos, setDatos] = useState<Datos | null>(null)
   const [colaInsignias, setColaInsignias] = useState<Insignia[]>([])
   const [cambioLiga, setCambioLiga] = useState<Insignia | null>(null)
@@ -216,7 +219,7 @@ export default function Panel() {
       valor: miPosicion?.posicion ?? 0,
       etiqueta: 'Tu lugar esta semana',
       Icono: Trophy,
-      color: 'text-exito bg-exito/10',
+      color: 'text-exito-texto bg-exito/10',
       prefijo: '#',
     },
   ]
@@ -225,8 +228,9 @@ export default function Panel() {
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold lg:text-3xl">
-            Hola, <span className="capitalize">{nombrePila}</span> 👋
+          <h1 className="text-3xl font-black tracking-[-0.03em] lg:text-4xl">
+            Hola,{' '}
+            <span className="capitalize text-magenta-500">{nombrePila}</span> 👋
           </h1>
           <p className="mt-1 text-tinta-suave">Este es tu estado de formación.</p>
         </div>
@@ -258,7 +262,11 @@ export default function Panel() {
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${Math.round(nivel.progreso * 100)}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+            transition={{
+              duration: reduce ? 0 : 0.8,
+              ease: EASE_OUT,
+              delay: reduce ? 0 : 0.2,
+            }}
             className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500"
           />
         </div>
@@ -269,9 +277,13 @@ export default function Panel() {
         {tarjetas.map(({ clave, valor, etiqueta, Icono, color, prefijo }, i) => (
           <motion.div
             key={clave}
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: reduce ? 0 : 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07, duration: 0.35, ease: 'easeOut' }}
+            transition={{
+              delay: reduce ? 0 : i * STAGGER,
+              duration: 0.35,
+              ease: EASE_OUT,
+            }}
           >
             <Tarjeta className="flex h-full flex-col gap-3">
               <span className={`grid size-10 place-items-center rounded-xl ${color}`}>
@@ -297,7 +309,7 @@ export default function Panel() {
 
       <Link
         to="/ejercicios"
-        className="mt-5 inline-flex items-center gap-2 rounded-xl bg-magenta-500 px-6 py-3 font-semibold text-white shadow-lg shadow-magenta-500/25 transition-all hover:bg-magenta-600 active:scale-[0.98]"
+        className={clasesBoton('primario', 'mt-5 px-6 py-3')}
       >
         <Flame className="size-5" />
         {datos.repasosPendientes > 0
@@ -313,9 +325,13 @@ export default function Panel() {
             {datos.heroes.map((h, i) => (
               <motion.div
                 key={h.nombre}
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.15 + i * 0.12, type: 'spring', bounce: 0.4 }}
+                transition={{
+                  delay: reduce ? 0 : 0.15 + i * 0.12,
+                  type: 'spring',
+                  bounce: 0.4,
+                }}
               >
                 <Tarjeta
                   className={`flex items-center gap-3 ${

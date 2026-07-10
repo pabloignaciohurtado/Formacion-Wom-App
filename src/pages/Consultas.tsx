@@ -11,7 +11,7 @@ export function EstadoConsulta({ estado }: { estado: string }) {
   return (
     <span
       className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
-        esPendiente ? 'bg-amber-100 text-amber-700' : 'bg-exito/15 text-exito'
+        esPendiente ? 'bg-amber-100 text-amber-700' : 'bg-exito/15 text-exito-texto'
       }`}
     >
       {estado}
