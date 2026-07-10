@@ -60,7 +60,7 @@ export function AdminEquipo() {
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-niebla text-left text-xs uppercase tracking-wide text-tinta-suave">
-                <th className="px-5 py-3">Relator</th>
+                <th className="px-5 py-3">Ejecutivo</th>
                 <th className="px-5 py-3">Liga</th>
                 <th className="px-5 py-3">XP</th>
                 <th className="px-5 py-3">Precisión</th>
