@@ -4,7 +4,12 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminEquipo } from '../components/AdminEquipo'
-import { etiquetaRol, puedeAsignar, type Rol } from '../lib/roles'
+import {
+  etiquetaRol,
+  puedeAsignar,
+  puedeTenerSupervisor,
+  type Rol,
+} from '../lib/roles'
 import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
@@ -154,7 +159,7 @@ export default function Admin() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    {r.role === 'ejecutivo' ? (
+                    {puedeTenerSupervisor(r.role) ? (
                       <select
                         value={r.supervisor_id ?? ''}
                         onChange={(e) =>
@@ -165,7 +170,15 @@ export default function Admin() {
                       >
                         <option value="">Sin supervisor</option>
                         {(usuarios ?? [])
-                          .filter((u) => puedeAsignar(u.role) && u.id !== r.id)
+                          // Jefes posibles: supervisores y admins. Se excluye a
+                          // uno mismo y a quien ya reporta a esta persona, para
+                          // no cerrar un ciclo directo (A jefe de B y B de A).
+                          .filter(
+                            (u) =>
+                              puedeAsignar(u.role) &&
+                              u.id !== r.id &&
+                              u.supervisor_id !== r.id
+                          )
                           .map((u) => (
                             <option key={u.id} value={u.id}>
                               {u.nombre}

@@ -32,3 +32,10 @@ export function esAdmin(role: string | null | undefined): boolean {
 export function puedeAsignar(role: string | null | undefined): boolean {
   return role === 'supervisor' || role === 'admin'
 }
+
+// Quién puede tener un jefe asignado: ejecutivos y supervisores. Un
+// supervisor también reporta (a otro supervisor o a un admin); solo el admin
+// gestiona la plataforma y no responde a nadie dentro de ella.
+export function puedeTenerSupervisor(role: string | null | undefined): boolean {
+  return role === 'ejecutivo' || role === 'supervisor'
+}
