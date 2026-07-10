@@ -8,7 +8,14 @@ import { Esqueleto, Tarjeta } from '../components/ui'
 import { clasesBoton } from '../components/estilosBoton'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 import { InsigniaModal } from '../components/InsigniaModal'
-import { LIGAS, ligaDe, nivelDe, xpTotal } from '../lib/gamificacion'
+import {
+  LIGAS,
+  deltaSemanal,
+  ligaDe,
+  nivelDe,
+  xpTotal,
+  zonaLiga,
+} from '../lib/gamificacion'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
 import { EASE_OUT, STAGGER } from '../lib/motion'
@@ -25,14 +32,18 @@ interface Datos {
   racha: number
   // El ranking y los héroes miden PUNTAJE SEMANAL, no XP: son cosas
   // distintas (el XP acumulado define el nivel; el puntaje, la liga).
+  // El ranking es de la DIVISIÓN del usuario (sus pares del mismo tier), no
+  // global: competir contra todos desmotiva al que va detrás.
   ranking: {
     user_id: string
     nombre: string
     liga: string
     puntaje: number
     posicion: number
+    compiten: number
   }[]
   heroes: { nombre: string; puntaje: number; posicion: number }[]
+  progreso: { actual: number; anterior: number }
   insignias: Set<string>
 }
 
@@ -63,6 +74,7 @@ export default function Panel() {
         racha,
         ranking,
         heroes,
+        progreso,
         cards,
         actividades,
         completadas,
@@ -83,8 +95,9 @@ export default function Panel() {
           .eq('user_id', user.id)
           .lte('proximo_repaso', ahora),
         supabase.rpc('mi_racha'),
-        supabase.rpc('ranking_semanal'),
+        supabase.rpc('ranking_division'),
         supabase.rpc('heroes_semana'),
+        supabase.rpc('mi_progreso_semanal'),
         supabase.from('srs_cards').select('exercise_id, domain_id, caja').eq('user_id', user.id),
         supabase.from('actividades').select('id').eq('activa', true),
         supabase
@@ -106,6 +119,7 @@ export default function Panel() {
         racha: racha.data ?? 0,
         ranking: ranking.data ?? [],
         heroes: heroes.data ?? [],
+        progreso: progreso.data?.[0] ?? { actual: 0, anterior: 0 },
         insignias,
       })
 
@@ -222,7 +236,7 @@ export default function Panel() {
     {
       clave: 'posicion',
       valor: miPosicion?.posicion ?? 0,
-      etiqueta: 'Tu lugar esta semana',
+      etiqueta: 'Tu lugar en tu liga',
       Icono: Trophy,
       color: 'text-exito-texto bg-exito/10',
       prefijo: '#',
@@ -381,46 +395,110 @@ export default function Panel() {
         })}
       </div>
 
-      {/* Ranking semanal */}
-      <h2 className="mt-8 text-lg font-bold">Ranking de la semana</h2>
-      <Tarjeta className="mt-3 p-0">
-        <ul>
-          {datos.ranking.map((r) => {
-            const esYo = r.user_id === user?.id
-            return (
-              <li
-                key={r.user_id}
-                className={`flex items-center gap-3 border-b border-niebla px-5 py-3 last:border-0 ${
-                  esYo ? 'bg-wom-50' : ''
+      {/* Liga por división + auto-competencia */}
+      {(() => {
+        const compiten = datos.ranking[0]?.compiten ?? 0
+        const miLiga = ligaDe(perfil?.liga)
+        const delta = deltaSemanal(datos.progreso.actual, datos.progreso.anterior)
+        return (
+          <>
+            <div className="mt-8 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold">
+                Tu liga: <span title={miLiga.nombre}>{miLiga.icono}</span> {miLiga.nombre}
+              </h2>
+              <span className="text-sm font-semibold text-tinta-suave">
+                {compiten} compitiendo esta semana
+              </span>
+            </div>
+
+            {/* Auto-competencia: contra tu propia semana anterior */}
+            <Tarjeta className="mt-3 flex flex-wrap items-center justify-between gap-2 py-3">
+              <span className="text-sm font-medium text-tinta-suave">
+                Llevas <strong className="text-tinta">{datos.progreso.actual} pts</strong> · a
+                esta altura la semana pasada: {datos.progreso.anterior}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+                  delta.sentido === 'mejor'
+                    ? 'bg-exito/10 text-exito-texto'
+                    : delta.sentido === 'peor'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-niebla text-tinta-suave'
                 }`}
               >
-                <span
-                  className={`w-8 text-center font-extrabold ${
-                    r.posicion <= 3 ? 'text-xl' : 'text-tinta-suave'
-                  }`}
-                >
-                  {MEDALLAS[r.posicion - 1] ?? `#${r.posicion}`}
-                </span>
-                <span className="flex-1 font-semibold">
-                  <span className="mr-1" title={ligaDe(r.liga).nombre}>
-                    {ligaDe(r.liga).icono}
-                  </span>
-                  {r.nombre}
-                  {esYo && (
-                    <span className="ml-2 rounded-full bg-wom-600 px-2 py-0.5 text-xs font-bold text-white">
-                      tú
-                    </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-1 font-bold text-magenta-500">
-                  <Zap className="size-4 fill-current" />
-                  {r.puntaje} pts
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      </Tarjeta>
+                {delta.sentido === 'mejor'
+                  ? `▲ +${delta.diff} vs. tu semana pasada`
+                  : delta.sentido === 'peor'
+                    ? `${delta.diff} — aún puedes remontar`
+                    : 'Igual que tu semana pasada'}
+              </span>
+            </Tarjeta>
+
+            <Tarjeta className="mt-3 p-0">
+              <ul>
+                {datos.ranking.map((r) => {
+                  const esYo = r.user_id === user?.id
+                  const zona = zonaLiga({
+                    liga: r.liga,
+                    posicion: r.posicion,
+                    compiten,
+                    puntaje: r.puntaje,
+                  })
+                  const borde =
+                    zona === 'sube'
+                      ? 'border-l-4 border-l-exito'
+                      : zona === 'baja'
+                        ? 'border-l-4 border-l-red-400'
+                        : 'border-l-4 border-l-transparent'
+                  return (
+                    <li
+                      key={r.user_id}
+                      className={`flex items-center gap-3 border-b border-niebla px-5 py-3 last:border-0 ${borde} ${
+                        esYo ? 'bg-wom-50' : ''
+                      }`}
+                    >
+                      <span
+                        className={`w-8 text-center font-extrabold ${
+                          r.posicion <= 3 ? 'text-xl' : 'text-tinta-suave'
+                        }`}
+                      >
+                        {MEDALLAS[r.posicion - 1] ?? `#${r.posicion}`}
+                      </span>
+                      <span className="flex-1 font-semibold">
+                        {r.nombre}
+                        {esYo && (
+                          <span className="ml-2 rounded-full bg-wom-600 px-2 py-0.5 text-xs font-bold text-white">
+                            tú
+                          </span>
+                        )}
+                        {zona === 'sube' && (
+                          <span className="ml-2 rounded-full bg-exito/10 px-2 py-0.5 text-xs font-bold text-exito-texto">
+                            ▲ asciende
+                          </span>
+                        )}
+                        {zona === 'baja' && (
+                          <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+                            ▼ desciende
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1 font-bold text-magenta-500">
+                        <Zap className="size-4 fill-current" />
+                        {r.puntaje} pts
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </Tarjeta>
+            <p className="mt-2 px-1 text-xs text-tinta-suave">
+              Compites solo contra tu liga. El <strong>top 2 asciende</strong> (con 4 o más
+              compitiendo); quien queda en 0 desciende{' '}
+              {perfil?.liga === 'bronce' ? '(en Bronce no se baja)' : ''}. El corte es cada lunes.
+            </p>
+          </>
+        )
+      })()}
 
       <InsigniaModal
         insignia={colaInsignias[0] ?? null}

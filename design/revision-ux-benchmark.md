@@ -93,3 +93,19 @@ Prácticas que **todas** las líderes comparten:
 Investigación con búsqueda web sobre Axonify, Centrical, Duolingo, EdApp/SC Training, Kahoot!, MobieTrain, Anki, Quizlet, 7taps, Spekit y Gnowbe (ratings de G2/Capterra/App Store/Play y quejas de reseñas, estado 2025–2026). Evidencia peer-reviewed del anti-patrón de velocidad: CBE—Life Sciences Education (`lifescied.org/doi/10.1187/cbe.20-08-0187`). Remediación “Accuracy mode” de Kahoot (mayo 2025). Cierre standalone de EdApp/SC Training (marzo 2026). Auditoría de código sobre `src/pages/Practica.tsx`, `src/pages/Panel.tsx`, `src/pages/Ejercicios.tsx`, `src/lib/motion.ts`, `src/lib/srs.ts` y `src/components/Layout.tsx`.
 
 > **Re-evaluación (Fase 5):** tras un ciclo de mejoras, re-puntuar **solo** las dimensiones con trabajo real, justificando cada movimiento, y anexar aquí la tabla v1 | v2 | qué lo movió. Las dimensiones sin trabajo no se mueven: la honestidad del bench es su valor.
+
+---
+
+## 9. Re-evaluación v2 — 11 de julio de 2026 (ciclo: ligas y competencia)
+
+Se trabajó **una sola dimensión**; el resto no se mueve.
+
+| # | Dimensión | v1 | v2 | Qué lo movió |
+|---|---|:---:|:---:|---|
+| 4 | Ligas y competencia (calibración) | 5.0 | **7.5** | Ranking por **división** (compites solo contra tu tier, no global — el arreglo directo del anti-patrón); **zonas de ascenso/descenso** visibles (top 2 sube con ≥4 compitiendo, 0 pts baja) que dan aspiración sin prometer nada que el corte no cumpla; y **auto-competencia** (tu semana actual vs. tu propia semana anterior, comparación justa al mismo punto de la semana). No se tocó la fórmula ni el corte —ya eran buenos— solo el agrupamiento y lo que se muestra. |
+
+**Promedio: 6.3 → 6.6.** La dimensión alcanza la línea del estándar (7.5). Lo que resta para pasar de 7.5 (P2, no hecho): recompensa **canjeable/de estatus por equipo** (tienda de puntos) y cohortes de tamaño fijo cuando la población crezca.
+
+**Detalle técnico.** Migración `ligas_por_division_y_autocompetencia`: funciones `ranking_division()` y `mi_progreso_semanal()` (SECURITY DEFINER, acotadas al tier del que llama; menos exposición que el ranking global anterior). Rollback en `docs/rollback-ligas-division.sql`. Lógica pura `zonaLiga()`/`deltaSemanal()` con pruebas, espejando exactamente las reglas del corte. Probado E2E contra la base con JWTs simulados (5/5, cero residuos).
+
+**Siguientes palancas de mayor retorno** (del plan §7): los dos P0 restantes ya no incluyen ligas — quedan el **quick-start** (onboarding, dim. 5) y, en lo estratégico, **confianza en el SRS** + **vínculo a KPI** (dims. 2 y 7), que son los que llevarían el promedio por encima de 7.9.
