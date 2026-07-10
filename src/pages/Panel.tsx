@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Esqueleto, Tarjeta } from '../components/ui'
@@ -259,7 +259,7 @@ export default function Panel() {
           )}
         </div>
         <div className="mt-2 h-3 overflow-hidden rounded-full bg-niebla">
-          <motion.div
+          <m.div
             initial={{ width: 0 }}
             animate={{ width: `${Math.round(nivel.progreso * 100)}%` }}
             transition={{
@@ -275,7 +275,7 @@ export default function Panel() {
       {/* Métricas */}
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tarjetas.map(({ clave, valor, etiqueta, Icono, color, prefijo }, i) => (
-          <motion.div
+          <m.div
             key={clave}
             initial={{ opacity: 0, y: reduce ? 0 : 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -303,7 +303,7 @@ export default function Panel() {
                 <p className="text-sm text-tinta-suave">{etiqueta}</p>
               </div>
             </Tarjeta>
-          </motion.div>
+          </m.div>
         ))}
       </div>
 
@@ -323,7 +323,7 @@ export default function Panel() {
           <h2 className="mt-8 text-lg font-bold">🏆 Héroes de la semana</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             {datos.heroes.map((h, i) => (
-              <motion.div
+              <m.div
                 key={h.nombre}
                 initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -344,7 +344,7 @@ export default function Panel() {
                     <p className="text-sm text-tinta-suave">{h.xp} XP la semana pasada</p>
                   </div>
                 </Tarjeta>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </>

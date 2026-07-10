@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Award, ChevronDown, ChevronRight } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORIAS, DOMINIOS, type Dominio } from '../data/contenido'
@@ -32,7 +32,7 @@ function TarjetaDominio({
 }) {
   const porHacer = estado.pendientes + estado.nuevos
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: indice * 0.05, duration: 0.3, ease: 'easeOut' }}
@@ -55,7 +55,7 @@ function TarjetaDominio({
             {estado.meta && <span>Meta {estado.meta.maestria_objetivo}%</span>}
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-niebla">
-            <motion.div
+            <m.div
               initial={{ width: 0 }}
               animate={{ width: `${estado.maestria}%` }}
               transition={{ delay: 0.2, duration: 0.6, ease: 'easeOut' }}
@@ -87,7 +87,7 @@ function TarjetaDominio({
           </button>
         )}
       </Tarjeta>
-    </motion.div>
+    </m.div>
   )
 }
 
@@ -206,18 +206,18 @@ export default function Ejercicios() {
                       )}
                     </span>
                   </span>
-                  <motion.span
+                  <m.span
                     animate={{ rotate: abierta ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     className="text-tinta-suave"
                   >
                     <ChevronDown className="size-5" />
-                  </motion.span>
+                  </m.span>
                 </button>
 
                 <AnimatePresence initial={false}>
                   {abierta && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
@@ -235,7 +235,7 @@ export default function Ejercicios() {
                           />
                         ))}
                       </div>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
