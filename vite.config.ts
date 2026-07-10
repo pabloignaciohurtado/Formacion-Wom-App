@@ -56,7 +56,9 @@ export default defineConfig(({ command, mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
+          // .woff solo lo piden navegadores anteriores a 2016; precachearlo
+          // duplica el peso de fuentes sin beneficio para nadie real.
+          globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
           // No interceptar las llamadas a Supabase
           navigateFallbackDenylist: [/^\/rest\//, /^\/auth\//],
         },
