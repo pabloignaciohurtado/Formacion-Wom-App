@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Check, X, Zap } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -230,20 +230,20 @@ export default function Practica() {
             </p>
           </>
         ) : (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', bounce: 0.45, duration: 0.7 }}
           >
             <Tarjeta className="p-8 text-center">
-              <motion.div
+              <m.div
                 initial={{ rotate: reduce ? 0 : -12, scale: reduce ? 1 : 0 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ type: 'spring', bounce: 0.6, delay: reduce ? 0 : 0.15 }}
                 className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-gradient-to-br from-wom-600 to-magenta-500 text-4xl"
               >
                 🏆
-              </motion.div>
+              </m.div>
               <h1 className="text-3xl font-black tracking-[-0.02em]">¡Sesión terminada!</h1>
               <p className="mt-1 text-tinta-suave">{dominio.titulo}</p>
 
@@ -269,7 +269,7 @@ export default function Practica() {
                 a tu repaso.
               </p>
             </Tarjeta>
-          </motion.div>
+          </m.div>
         )}
         <Link
           to="/ejercicios"
@@ -292,7 +292,7 @@ export default function Practica() {
         <div className="relative flex items-center gap-3">
           <AnimatePresence>
             {xpFlotante && (
-              <motion.span
+              <m.span
                 key={xpFlotante.id}
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 0, y: -34 }}
@@ -302,10 +302,10 @@ export default function Practica() {
                 className="absolute -top-1 right-16 font-extrabold text-magenta-500"
               >
                 +{xpFlotante.cantidad}
-              </motion.span>
+              </m.span>
             )}
           </AnimatePresence>
-          <motion.span
+          <m.span
             key={xp}
             initial={{ scale: reduce ? 1 : 1.35 }}
             animate={{ scale: 1 }}
@@ -314,7 +314,7 @@ export default function Practica() {
           >
             <Zap className="size-4 fill-current" />
             {xp} XP
-          </motion.span>
+          </m.span>
           <span className="text-sm font-semibold text-tinta-suave">
             {indice + 1}/{cola.length}
           </span>
@@ -325,14 +325,14 @@ export default function Practica() {
       )}
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-        <motion.div
+        <m.div
           animate={{ width: `${progreso}%` }}
           transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
           className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500"
         />
       </div>
 
-      <motion.div
+      <m.div
         key={ejercicio.id}
         initial={{ opacity: 0, x: reduce ? 0 : 24 }}
         animate={{ opacity: 1, x: 0 }}
@@ -360,7 +360,7 @@ export default function Practica() {
                 fase === 'feedback' && i === seleccion && !acerto
               const esCorrectaMostrada = fase === 'feedback' && esLaCorrecta
               return (
-                <motion.button
+                <m.button
                   key={i}
                   type="button"
                   animate={
@@ -384,14 +384,14 @@ export default function Practica() {
                       <X className="size-5 shrink-0 text-red-500" />
                     )}
                   </span>
-                </motion.button>
+                </m.button>
               )
             })}
           </div>
 
           <AnimatePresence>
             {fase === 'feedback' && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -419,11 +419,11 @@ export default function Practica() {
                     {indice + 1 >= cola.length ? 'Ver resumen' : 'Siguiente'}
                   </Boton>
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
         </Tarjeta>
-      </motion.div>
+      </m.div>
     </section>
   )
 }
