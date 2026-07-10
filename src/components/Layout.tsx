@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '../lib/motion'
@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
 import { MarcaWom } from './MarcaWom'
+import { EstadoCarga } from './ui'
 import { EstadoConexion } from './EstadoConexion'
 
 const enlaces = [
@@ -148,7 +149,12 @@ export function Layout() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: EASE_OUT }}
         >
-          <Outlet />
+          {/* Suspense aquí y no alrededor del Layout: así el chrome
+              (barra lateral, cabecera) no se desmonta mientras llega el
+              chunk de la página. */}
+          <Suspense fallback={<EstadoCarga />}>
+            <Outlet />
+          </Suspense>
         </motion.div>
       </main>
 

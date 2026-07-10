@@ -1,47 +1,62 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AdminRoute } from './auth/AdminRoute'
 import { Layout } from './components/Layout'
+import { EstadoCarga } from './components/ui'
 import Login from './pages/Login'
-import Registro from './pages/Registro'
-import Recuperar from './pages/Recuperar'
-import Restablecer from './pages/Restablecer'
-import Panel from './pages/Panel'
-import Ejercicios from './pages/Ejercicios'
-import Practica from './pages/Practica'
-import Actividades from './pages/Actividades'
-import Consultas from './pages/Consultas'
-import Admin from './pages/Admin'
-import FichaRelator from './pages/FichaRelator'
+
+// Login viaja en el bundle inicial: es la primera pantalla de casi todas las
+// visitas y no debe costar una petición extra. El resto llega bajo demanda,
+// cuando el router lo necesita.
+//
+// Esto no reduce lo que el navegador descarga en total —el service worker
+// precachea todos los chunks— pero sí lo que tiene que analizar y ejecutar
+// antes de pintar. Los 50 KB del catálogo de ejercicios y las páginas de
+// administración dejan de estar en la ruta crítica de un relator.
+const Registro = lazy(() => import('./pages/Registro'))
+const Recuperar = lazy(() => import('./pages/Recuperar'))
+const Restablecer = lazy(() => import('./pages/Restablecer'))
+const Panel = lazy(() => import('./pages/Panel'))
+const Ejercicios = lazy(() => import('./pages/Ejercicios'))
+const Practica = lazy(() => import('./pages/Practica'))
+const Actividades = lazy(() => import('./pages/Actividades'))
+const Consultas = lazy(() => import('./pages/Consultas'))
+const Admin = lazy(() => import('./pages/Admin'))
+const FichaRelator = lazy(() => import('./pages/FichaRelator'))
 
 // En GitHub Pages la app se sirve bajo /Formacion-Wom-App/; BASE_URL la
-// define vite build --base=… ('/' en desarrollo y en Vercel).
+// define vite build --base=… ('/' en desarrollo).
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename={basename}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/registro" element={<Registro />} />
-          <Route path="/recuperar" element={<Recuperar />} />
-          <Route path="/restablecer" element={<Restablecer />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<Panel />} />
-              <Route path="/ejercicios" element={<Ejercicios />} />
-              <Route path="/ejercicios/:dominioId" element={<Practica />} />
-              <Route path="/actividades" element={<Actividades />} />
-              <Route path="/consultas" element={<Consultas />} />
-              <Route element={<AdminRoute />}>
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/relator/:id" element={<FichaRelator />} />
+        {/* Este Suspense cubre las páginas de autenticación, que no viven
+            dentro del Layout. Las de dentro tienen el suyo propio. */}
+        <Suspense fallback={<EstadoCarga />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/registro" element={<Registro />} />
+            <Route path="/recuperar" element={<Recuperar />} />
+            <Route path="/restablecer" element={<Restablecer />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Panel />} />
+                <Route path="/ejercicios" element={<Ejercicios />} />
+                <Route path="/ejercicios/:dominioId" element={<Practica />} />
+                <Route path="/actividades" element={<Actividades />} />
+                <Route path="/consultas" element={<Consultas />} />
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/relator/:id" element={<FichaRelator />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   )
