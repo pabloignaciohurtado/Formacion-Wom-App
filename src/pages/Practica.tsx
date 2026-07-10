@@ -8,7 +8,13 @@ import { useAuth } from '../auth/useAuth'
 import { obtenerDominio, type Ejercicio } from '../data/contenido'
 import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
 import { encolarOffline } from '../lib/colaOffline'
-import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
+import {
+  Boton,
+  EstadoCarga,
+  MensajeAviso,
+  MensajeError,
+  Tarjeta,
+} from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 import { COLORES_WOM, EASE_OUT, tSpring } from '../lib/motion'
 
@@ -31,6 +37,7 @@ export default function Practica() {
   const [xp, setXp] = useState(0)
   const [xpFlotante, setXpFlotante] = useState<{ id: number; cantidad: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [flash, setFlash] = useState(false)
   const reduce = useReducedMotion()
 
@@ -118,6 +125,7 @@ export default function Practica() {
     setSeleccion(posicion)
     setFase('feedback')
     setError(null)
+    setAviso(null)
 
     const correcto = orden[posicion] === ejercicio.correcta
     const ganado = correcto ? XP_ACIERTO : XP_INTENTO
@@ -173,9 +181,13 @@ export default function Practica() {
       actualizada: ahora,
     }
 
-    // Sin conexión: se encola y se sincroniza al volver la red
+    // Sin conexión: se encola y se sincroniza al volver la red. Se avisa,
+    // porque callar deja al relator creyendo que su avance ya está guardado.
     if (!navigator.onLine) {
       encolarOffline({ intento: payloadIntento, tarjeta: payloadTarjeta })
+      setAviso(
+        'Sin conexión: tu respuesta quedó guardada en este dispositivo y se subirá sola al volver la red.'
+      )
       return
     }
 
@@ -193,6 +205,7 @@ export default function Practica() {
 
   const siguiente = () => {
     setSeleccion(null)
+    setAviso(null)
     setFlash(false)
     if (indice + 1 >= cola.length) {
       setFase('resumen')
@@ -392,6 +405,11 @@ export default function Practica() {
                   <p className="mt-1 text-sm text-tinta-suave">
                     {ejercicio.explicacion}
                   </p>
+                  {aviso && (
+                    <div className="mt-3">
+                      <MensajeAviso>{aviso}</MensajeAviso>
+                    </div>
+                  )}
                   {error && (
                     <div className="mt-3">
                       <MensajeError>{error}</MensajeError>

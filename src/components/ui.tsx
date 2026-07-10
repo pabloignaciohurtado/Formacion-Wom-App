@@ -59,6 +59,17 @@ export function MensajeError({ children }: { children: ReactNode }) {
   )
 }
 
+export function MensajeAviso({ children }: { children: ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-700"
+    >
+      {children}
+    </p>
+  )
+}
+
 export function Esqueleto({ className = '' }: { className?: string }) {
   return (
     <div className={`animate-pulse rounded-2xl bg-gray-300/50 ${className}`} />
