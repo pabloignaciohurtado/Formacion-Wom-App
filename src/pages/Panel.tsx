@@ -327,7 +327,7 @@ export default function Panel() {
       </div>
 
       <Link
-        to="/ejercicios"
+        to={datos.repasosPendientes > 0 ? '/repasar' : '/ejercicios'}
         className={clasesBoton('primario', 'mt-5 px-6 py-3')}
       >
         <Flame className="size-5" />
