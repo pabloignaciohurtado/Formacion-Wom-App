@@ -4,9 +4,11 @@ import {
   NIVELES,
   XP_ACIERTO,
   XP_INTENTO,
+  deltaSemanal,
   ligaDe,
   nivelDe,
   xpTotal,
+  zonaLiga,
 } from './gamificacion'
 
 describe('xpTotal', () => {
@@ -46,6 +48,39 @@ describe('nivelDe', () => {
   it('los umbrales están en orden ascendente', () => {
     const mins = NIVELES.map((n) => n.min)
     expect([...mins].sort((a, b) => a - b)).toEqual(mins)
+  })
+})
+
+describe('zonaLiga (espeja las reglas del corte semanal)', () => {
+  it('el top 2 asciende cuando hay ≥4 compitiendo', () => {
+    expect(zonaLiga({ liga: 'plata', posicion: 1, compiten: 5, puntaje: 40 })).toBe('sube')
+    expect(zonaLiga({ liga: 'plata', posicion: 2, compiten: 4, puntaje: 20 })).toBe('sube')
+  })
+
+  it('no asciende si compiten menos de 4', () => {
+    expect(zonaLiga({ liga: 'plata', posicion: 1, compiten: 3, puntaje: 40 })).toBe('firme')
+  })
+
+  it('no asciende fuera del top 2', () => {
+    expect(zonaLiga({ liga: 'plata', posicion: 3, compiten: 8, puntaje: 40 })).toBe('firme')
+  })
+
+  it('en héroe (la cima) el top 2 no sube, se mantiene firme', () => {
+    expect(zonaLiga({ liga: 'heroe', posicion: 1, compiten: 6, puntaje: 90 })).toBe('firme')
+  })
+
+  it('puntaje 0 desciende, salvo en bronce que es el suelo', () => {
+    expect(zonaLiga({ liga: 'plata', posicion: 6, compiten: 5, puntaje: 0 })).toBe('baja')
+    expect(zonaLiga({ liga: 'heroe', posicion: 6, compiten: 5, puntaje: 0 })).toBe('baja')
+    expect(zonaLiga({ liga: 'bronce', posicion: 6, compiten: 5, puntaje: 0 })).toBe('firme')
+  })
+})
+
+describe('deltaSemanal (auto-competencia)', () => {
+  it('detecta mejora, empate y retroceso', () => {
+    expect(deltaSemanal(40, 25)).toEqual({ diff: 15, sentido: 'mejor' })
+    expect(deltaSemanal(20, 20)).toEqual({ diff: 0, sentido: 'igual' })
+    expect(deltaSemanal(8, 15)).toEqual({ diff: -7, sentido: 'peor' })
   })
 })
 

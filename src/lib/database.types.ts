@@ -441,6 +441,13 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_supervisor: { Args: never; Returns: boolean }
+      mi_progreso_semanal: {
+        Args: never
+        Returns: {
+          actual: number
+          anterior: number
+        }[]
+      }
       mi_racha: { Args: never; Returns: number }
       precision_por_dominio: {
         Args: never
@@ -457,6 +464,20 @@ export type Database = {
           aciertos: number
           dias: number
           obligatorios: number
+          puntaje: number
+          user_id: string
+        }[]
+      }
+      ranking_division: {
+        Args: never
+        Returns: {
+          aciertos: number
+          compiten: number
+          dias: number
+          liga: string
+          nombre: string
+          obligatorios: number
+          posicion: number
           puntaje: number
           user_id: string
         }[]

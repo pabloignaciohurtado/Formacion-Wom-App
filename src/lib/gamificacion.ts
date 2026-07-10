@@ -41,6 +41,37 @@ export function xpTotal(intentos: number, correctas: number): number {
   return correctas * XP_ACIERTO + (intentos - correctas) * XP_INTENTO
 }
 
+export type ZonaLiga = 'sube' | 'baja' | 'firme'
+
+// En qué zona de su división está una persona, espejando exactamente las reglas
+// del corte semanal (asegurar_corte_semanal):
+//  - Desciende quien termina con puntaje 0 — salvo en bronce, que es el suelo.
+//  - Asciende el top 2, pero solo si hay ≥4 compitiendo (puntaje > 0) — salvo en
+//    héroe, la cima, donde no hay a dónde subir.
+// Sirve para pintar las zonas de ascenso/descenso y que la liga se sienta viva
+// sin prometer nada que el corte no vaya a cumplir.
+export function zonaLiga(args: {
+  liga: string
+  posicion: number
+  compiten: number
+  puntaje: number
+}): ZonaLiga {
+  const { liga, posicion, compiten, puntaje } = args
+  if (puntaje === 0) return liga === 'bronce' ? 'firme' : 'baja'
+  if (posicion <= 2 && compiten >= 4 && liga !== 'heroe') return 'sube'
+  return 'firme'
+}
+
+// Auto-competencia: tu semana actual contra tu propia semana anterior. El
+// sentido decide el tono en el que se muestra (celebrar, neutro, alentar).
+export function deltaSemanal(
+  actual: number,
+  anterior: number
+): { diff: number; sentido: 'mejor' | 'igual' | 'peor' } {
+  const diff = actual - anterior
+  return { diff, sentido: diff > 0 ? 'mejor' : diff < 0 ? 'peor' : 'igual' }
+}
+
 export function nivelDe(xp: number): {
   actual: Nivel
   siguiente: Nivel | null
