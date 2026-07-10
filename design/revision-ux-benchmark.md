@@ -96,16 +96,20 @@ Investigación con búsqueda web sobre Axonify, Centrical, Duolingo, EdApp/SC Tr
 
 ---
 
-## 9. Re-evaluación v2 — 11 de julio de 2026 (ciclo: ligas y competencia)
+## 9. Re-evaluación v2 — 11 de julio de 2026 (ciclos: ligas y quick-start)
 
-Se trabajó **una sola dimensión**; el resto no se mueve.
+Se trabajaron **dos dimensiones**; el resto no se mueve.
 
 | # | Dimensión | v1 | v2 | Qué lo movió |
 |---|---|:---:|:---:|---|
 | 4 | Ligas y competencia (calibración) | 5.0 | **7.5** | Ranking por **división** (compites solo contra tu tier, no global — el arreglo directo del anti-patrón); **zonas de ascenso/descenso** visibles (top 2 sube con ≥4 compitiendo, 0 pts baja) que dan aspiración sin prometer nada que el corte no cumpla; y **auto-competencia** (tu semana actual vs. tu propia semana anterior, comparación justa al mismo punto de la semana). No se tocó la fórmula ni el corte —ya eran buenos— solo el agrupamiento y lo que se muestra. |
+| 5 | Onboarding y fricción al valor | 7.0 | **8.0** | **Quick-start:** "Repasar ahora" ya no va al selector — abre directo una sesión que junta las tarjetas SRS vencidas de **todos** los dominios, las más atrasadas primero. Se elimina el desvío de 2 saltos hacia el hábito diario; queda solo el login inicial (inherente a una herramienta corporativa), por eso no llega al 8.5. |
 
-**Promedio: 6.3 → 6.6.** La dimensión alcanza la línea del estándar (7.5). Lo que resta para pasar de 7.5 (P2, no hecho): recompensa **canjeable/de estatus por equipo** (tienda de puntos) y cohortes de tamaño fijo cuando la población crezca.
+**Promedio: 6.3 → 6.7.** Las dos dimensiones alcanzan (dim. 4) o casi (dim. 5) la línea del estándar. Lo que resta: en ligas, recompensa **canjeable/de estatus por equipo** (P2); en onboarding, el cold-start sigue pidiendo login + activación por admin (estándar top-down, no un hueco real).
 
-**Detalle técnico.** Migración `ligas_por_division_y_autocompetencia`: funciones `ranking_division()` y `mi_progreso_semanal()` (SECURITY DEFINER, acotadas al tier del que llama; menos exposición que el ranking global anterior). Rollback en `docs/rollback-ligas-division.sql`. Lógica pura `zonaLiga()`/`deltaSemanal()` con pruebas, espejando exactamente las reglas del corte. Probado E2E contra la base con JWTs simulados (5/5, cero residuos).
+**Detalle técnico.**
 
-**Siguientes palancas de mayor retorno** (del plan §7): los dos P0 restantes ya no incluyen ligas — quedan el **quick-start** (onboarding, dim. 5) y, en lo estratégico, **confianza en el SRS** + **vínculo a KPI** (dims. 2 y 7), que son los que llevarían el promedio por encima de 7.9.
+- *Ligas.* Migración `ligas_por_division_y_autocompetencia`: `ranking_division()` y `mi_progreso_semanal()` (SECURITY DEFINER, acotadas al tier del que llama). Rollback en `docs/rollback-ligas-division.sql`. Lógica pura `zonaLiga()`/`deltaSemanal()` con pruebas. E2E contra la base con JWTs simulados (5/5, cero residuos).
+- *Quick-start.* Ruta `/repasar` reusa la pantalla de práctica en modo repaso: `construirColaRepaso()` (lógica pura con pruebas) resuelve cada tarjeta vencida a su ejercicio + dominio y arma la sesión cross-dominio; cada pregunta guarda su intento con el dominio correcto. Sin cambios en la base.
+
+**Siguientes palancas de mayor retorno** (del plan §7): en lo estratégico, **confianza en el SRS** + **vínculo a KPI** (dims. 2 y 7), que son los que llevarían el promedio por encima de 7.9; y, más barato, el **panel de jefaturas exportable** (dim. 6) y la **limpieza de la celebración del acierto** (dim. 1).
