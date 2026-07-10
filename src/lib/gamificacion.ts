@@ -22,8 +22,10 @@ export interface Liga {
   clase: string
 }
 
-// Orden ascendente. La promoción/descenso ocurre en el corte semanal
-// (función SQL asegurar_corte_semanal).
+// Orden ascendente. La promoción/descenso ocurre en el corte semanal, que
+// ejecuta pg_cron a diario (tarea `corte-semanal-ligas`) llamando a la función
+// SQL asegurar_corte_semanal. Es idempotente: solo actúa la primera vez de cada
+// semana.
 export const LIGAS: Liga[] = [
   { id: 'bronce', nombre: 'Liga Bronce', icono: '🥉', clase: 'from-amber-700 to-amber-500' },
   { id: 'plata', nombre: 'Liga Plata', icono: '🥈', clase: 'from-gray-500 to-gray-300' },
