@@ -58,7 +58,7 @@ export default function Registro() {
       <Tarjeta className="p-8">
         <h1 className="text-2xl font-extrabold">Crear cuenta</h1>
         <p className="mb-6 mt-1 text-sm text-tinta-suave">
-          Regístrate como relator de formación WOM
+          Regístrate para la formación interna de WOM
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
