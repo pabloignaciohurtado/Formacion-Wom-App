@@ -18,10 +18,17 @@ export function siguienteCaja(cajaActual: number, correcto: boolean): number {
   return Math.min(cajaActual + 1, CAJA_MAXIMA)
 }
 
+// El repaso vence al INICIO del día, no a la hora en que se practicó.
+//
+// Antes se conservaba la hora: quien practicaba a las 18:00 tenía su repaso
+// agendado para las 18:00 del día siguiente, así que por la mañana el Panel le
+// decía "0 repasos pendientes". El sistema seguía funcionando, pero el empujón
+// para volver desaparecía justo cuando la persona abría la app.
 export function proximoRepaso(caja: number, desde: Date = new Date()): string {
   const dias = DIAS_POR_CAJA[caja] ?? 1
   const fecha = new Date(desde)
   fecha.setDate(fecha.getDate() + dias)
+  fecha.setHours(0, 0, 0, 0)
   return fecha.toISOString()
 }
 
