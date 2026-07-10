@@ -5,7 +5,8 @@ import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
-import { obtenerDominio, type Ejercicio } from '../data/contenido'
+import { obtenerDominio } from '../data/contenido'
+import { construirColaRepaso, type ItemPractica } from '../data/repaso'
 import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
 import { encolarOffline } from '../lib/colaOffline'
 import {
@@ -27,9 +28,15 @@ type Fase = 'cargando' | 'pregunta' | 'feedback' | 'resumen'
 export default function Practica() {
   const { dominioId } = useParams()
   const { user } = useAuth()
-  const dominio = dominioId ? obtenerDominio(dominioId) : undefined
+  // Dos modos con la misma pantalla:
+  //  - dominio (/ejercicios/:dominioId): practica un dominio concreto.
+  //  - repaso (/repasar): junta las tarjetas SRS vencidas de TODOS los
+  //    dominios en una sola sesión, para que "Repasar ahora" caiga directo
+  //    en la práctica sin pasar por el selector.
+  const modoRepaso = !dominioId
+  const dominioFijo = dominioId ? obtenerDominio(dominioId) : undefined
 
-  const [cola, setCola] = useState<Ejercicio[]>([])
+  const [cola, setCola] = useState<ItemPractica[]>([])
   const [indice, setIndice] = useState(0)
   const [fase, setFase] = useState<Fase>('cargando')
   const [seleccion, setSeleccion] = useState<number | null>(null)
@@ -42,10 +49,31 @@ export default function Practica() {
   const reduce = useReducedMotion()
 
   useEffect(() => {
-    if (!user || !dominio) return
+    if (!user) return
+    if (!modoRepaso && !dominioFijo) return
     let cancelado = false
 
     const cargar = async () => {
+      if (modoRepaso) {
+        // Repaso: todas las tarjetas vencidas, de cualquier dominio, las más
+        // atrasadas primero. Cada una se resuelve a su ejercicio + dominio.
+        const { data: cards } = await supabase
+          .from('srs_cards')
+          .select('exercise_id, proximo_repaso')
+          .eq('user_id', user.id)
+          .lte('proximo_repaso', new Date().toISOString())
+          .order('proximo_repaso', { ascending: true })
+        if (cancelado) return
+        const sesion = construirColaRepaso(
+          (cards ?? []).map((c) => c.exercise_id),
+          EJERCICIOS_POR_SESION
+        )
+        setCola(sesion)
+        setFase('pregunta')
+        return
+      }
+
+      const dominio = dominioFijo!
       const { data: cards } = await supabase
         .from('srs_cards')
         .select('*')
@@ -65,7 +93,7 @@ export default function Practica() {
       if (sesion.length === 0) {
         sesion = dominio.ejercicios.slice(0, EJERCICIOS_POR_SESION)
       }
-      setCola(sesion)
+      setCola(sesion.map((ejercicio) => ({ dominio, ejercicio })))
       setFase('pregunta')
     }
 
@@ -73,7 +101,7 @@ export default function Practica() {
     return () => {
       cancelado = true
     }
-  }, [user, dominio])
+  }, [user, modoRepaso, dominioFijo])
 
   // Celebración al terminar la sesión
   useEffect(() => {
@@ -95,13 +123,15 @@ export default function Practica() {
     disparar(60, 110, 350)
   }, [fase, correctas, reduce])
 
-  const ejercicio = cola[indice]
+  const item = cola[indice]
+  const ejercicio = item?.ejercicio
+  const dominioActual = item?.dominio
   const objetivo = useMemo(
     () =>
-      dominio && ejercicio
-        ? dominio.objetivos.find((o) => o.id === ejercicio.objetivoId)
+      dominioActual && ejercicio
+        ? dominioActual.objetivos.find((o) => o.id === ejercicio.objetivoId)
         : undefined,
-    [dominio, ejercicio]
+    [dominioActual, ejercicio]
   )
 
   // Orden aleatorio de alternativas por pregunta y por sesión (anti-copia):
@@ -116,12 +146,13 @@ export default function Practica() {
     return indices
   }, [ejercicio])
 
-  if (!dominio) {
+  // En modo dominio, un id inválido en la URL vuelve al selector.
+  if (!modoRepaso && !dominioFijo) {
     return <Navigate to="/ejercicios" replace />
   }
 
   const responder = async (posicion: number) => {
-    if (!user || !ejercicio || fase !== 'pregunta') return
+    if (!user || !ejercicio || !dominioActual || fase !== 'pregunta') return
     setSeleccion(posicion)
     setFase('feedback')
     setError(null)
@@ -164,7 +195,7 @@ export default function Practica() {
       id: crypto.randomUUID(),
       user_id: user.id,
       exercise_id: ejercicio.id,
-      domain_id: dominio.id,
+      domain_id: dominioActual.id,
       objetivo_id: ejercicio.objetivoId,
       puntaje: correcto ? 100 : 0,
       correcto,
@@ -173,7 +204,7 @@ export default function Practica() {
     const payloadTarjeta = {
       user_id: user.id,
       exercise_id: ejercicio.id,
-      domain_id: dominio.id,
+      domain_id: dominioActual.id,
       caja,
       repasos: (cardActual?.repasos ?? 0) + 1,
       ultimo_resultado: correcto,
@@ -223,12 +254,23 @@ export default function Practica() {
     return (
       <section className="mx-auto max-w-xl">
         {cola.length === 0 ? (
-          <>
-            <h1 className="text-2xl font-extrabold">{dominio.titulo}</h1>
-            <p className="mt-4 text-tinta-suave">
-              No hay ejercicios disponibles en este dominio.
-            </p>
-          </>
+          modoRepaso ? (
+            <Tarjeta className="p-8 text-center">
+              <p className="text-4xl">✅</p>
+              <h1 className="mt-2 text-2xl font-extrabold">¡Estás al día!</h1>
+              <p className="mt-1 text-tinta-suave">
+                No tienes repasos pendientes por ahora. Vuelve cuando alguno
+                venza, o practica un dominio nuevo.
+              </p>
+            </Tarjeta>
+          ) : (
+            <>
+              <h1 className="text-2xl font-extrabold">{dominioFijo!.titulo}</h1>
+              <p className="mt-4 text-tinta-suave">
+                No hay ejercicios disponibles en este dominio.
+              </p>
+            </>
+          )
         ) : (
           <m.div
             initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
@@ -245,7 +287,9 @@ export default function Practica() {
                 🏆
               </m.div>
               <h1 className="text-3xl font-black tracking-[-0.02em]">¡Sesión terminada!</h1>
-              <p className="mt-1 text-tinta-suave">{dominio.titulo}</p>
+              <p className="mt-1 text-tinta-suave">
+                {modoRepaso ? 'Repaso de tus pendientes' : dominioFijo!.titulo}
+              </p>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
                 <div className="rounded-2xl bg-niebla p-4">
@@ -288,7 +332,9 @@ export default function Practica() {
     <section className="mx-auto max-w-xl">
       <div className={`wom-flash ${flash ? 'wom-flash-go' : ''}`} aria-hidden />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold">{dominio.titulo}</h1>
+        <h1 className="text-xl font-extrabold">
+          {modoRepaso ? 'Repaso' : dominioActual.titulo}
+        </h1>
         <div className="relative flex items-center gap-3">
           <AnimatePresence>
             {xpFlotante && (
@@ -320,8 +366,16 @@ export default function Practica() {
           </span>
         </div>
       </div>
-      {objetivo && (
-        <p className="mt-0.5 text-sm text-tinta-suave">{objetivo.titulo}</p>
+      {/* En repaso, cada pregunta puede ser de otro dominio: se muestra cuál,
+          para no perder el contexto. En modo dominio basta el objetivo. */}
+      {modoRepaso ? (
+        <p className="mt-0.5 text-sm text-tinta-suave">
+          {dominioActual.icono} {dominioActual.titulo}
+        </p>
+      ) : (
+        objetivo && (
+          <p className="mt-0.5 text-sm text-tinta-suave">{objetivo.titulo}</p>
+        )
       )}
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
