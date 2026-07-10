@@ -22,5 +22,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Vite inyecta las VITE_* en tiempo de compilación. Aquí solo se verifica
+      # que el proyecto compila, así que bastan valores de relleno: el artefacto
+      # del CI no se despliega. Los valores reales viven en deploy-pages.yml.
       - name: Compilar
         run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://ejemplo.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_ci
