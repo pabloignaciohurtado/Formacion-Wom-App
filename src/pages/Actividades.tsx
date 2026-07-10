@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CheckCircle2, ExternalLink, CalendarClock } from 'lucide-react'
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -115,7 +115,7 @@ export default function Actividades() {
           {pendientes.length > 0 && (
             <ul className="mt-6 space-y-3">
               {pendientes.map((a, i) => (
-                <motion.li
+                <m.li
                   key={a.id}
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -150,7 +150,7 @@ export default function Actividades() {
                       )}
                     </div>
                   </Tarjeta>
-                </motion.li>
+                </m.li>
               ))}
             </ul>
           )}

@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { motion, useReducedMotion } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '../lib/motion'
 import {
   LayoutDashboard,
@@ -143,7 +143,7 @@ export function Layout() {
 
       {/* Contenido con transición entre páginas */}
       <main className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 lg:px-8 lg:pb-10">
-        <motion.div
+        <m.div
           key={location.pathname}
           initial={{ opacity: 0, y: reduce ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -155,7 +155,7 @@ export function Layout() {
           <Suspense fallback={<EstadoCarga />}>
             <Outlet />
           </Suspense>
-        </motion.div>
+        </m.div>
       </main>
 
       {/* Bottom nav móvil */}
