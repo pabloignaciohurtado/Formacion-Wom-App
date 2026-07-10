@@ -49,8 +49,11 @@ export default function Panel() {
 
     const cargar = async () => {
       const ahora = new Date().toISOString()
-      // Procesa el corte de ligas si esta semana aún no se hizo (idempotente)
-      await supabase.rpc('asegurar_corte_semanal')
+      // El corte semanal de ligas ya no se dispara desde aquí: lo ejecuta
+      // pg_cron a diario (tarea `corte-semanal-ligas`). Antes, el primer
+      // relator que abría el Panel cada semana pagaba un round trip
+      // bloqueante en cada montaje, y si nadie entraba el lunes, el corte
+      // no ocurría. La función es idempotente, así que el cron es su sitio.
       const [
         intentos,
         correctas,
