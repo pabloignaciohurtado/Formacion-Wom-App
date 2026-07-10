@@ -55,6 +55,8 @@ export default function App() {
                   <Route path="/" element={<Panel />} />
                   <Route path="/ejercicios" element={<Ejercicios />} />
                   <Route path="/ejercicios/:dominioId" element={<Practica />} />
+                  {/* Repaso directo de todos los pendientes, sin selector. */}
+                  <Route path="/repasar" element={<Practica />} />
                   <Route path="/actividades" element={<Actividades />} />
                   <Route path="/consultas" element={<Consultas />} />
                   <Route element={<SupervisorRoute />}>
