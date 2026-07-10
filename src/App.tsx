@@ -4,6 +4,7 @@ import { domAnimation, LazyMotion } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AdminRoute } from './auth/AdminRoute'
+import { SupervisorRoute } from './auth/SupervisorRoute'
 import { Layout } from './components/Layout'
 import { EstadoCarga } from './components/ui'
 import Login from './pages/Login'
@@ -25,6 +26,7 @@ const Practica = lazy(() => import('./pages/Practica'))
 const Actividades = lazy(() => import('./pages/Actividades'))
 const Consultas = lazy(() => import('./pages/Consultas'))
 const Admin = lazy(() => import('./pages/Admin'))
+const Equipo = lazy(() => import('./pages/Equipo'))
 const FichaRelator = lazy(() => import('./pages/FichaRelator'))
 
 // En GitHub Pages la app se sirve bajo /Formacion-Wom-App/; BASE_URL la
@@ -55,6 +57,9 @@ export default function App() {
                   <Route path="/ejercicios/:dominioId" element={<Practica />} />
                   <Route path="/actividades" element={<Actividades />} />
                   <Route path="/consultas" element={<Consultas />} />
+                  <Route element={<SupervisorRoute />}>
+                    <Route path="/equipo" element={<Equipo />} />
+                  </Route>
                   <Route element={<AdminRoute />}>
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/admin/relator/:id" element={<FichaRelator />} />

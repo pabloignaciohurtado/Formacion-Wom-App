@@ -101,6 +101,18 @@ Lo que hace falta:
 4. Una pantalla de equipo: asignar `supervisor_id` a cada ejecutivo. Hoy la
    columna existe y está toda a `null`.
 
+> **Actualización (10-jul, tarde):** cerrado. La pantalla **Mi equipo**
+> (`/equipo`, ruta de `puedeAsignar()`) da a supervisores seguimiento y
+> asignación con alcance equipo/personas; el admin asigna rol y supervisor
+> desde la tabla de usuarios de Administración. Por el camino aparecieron y
+> se corrigieron dos bugs que los tipos desactualizados ocultaban: las
+> políticas de `actividades`/`actividades_destinatarios` del 10-jul eran
+> **mutuamente recursivas** (42P17: toda lectura de actividades fallaba), y
+> el Panel mostraba `undefined` en ranking/héroes porque esperaba `xp` de
+> funciones que ya devuelven `puntaje`. Migraciones:
+> `supervisores_ven_su_equipo` y `destinatarios_sin_recursion`; rollback en
+> `docs/rollback-supervisores-ven-su-equipo.sql`.
+
 ---
 
 ## 4. Deuda conocida, con su porqué

@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   MessageCircleQuestion,
   ShieldCheck,
+  Users,
   LogOut,
   Moon,
   Sun,
@@ -59,6 +60,8 @@ export function Layout() {
     return () => window.removeEventListener('online', alVolver)
   }, [])
   const esAdmin = perfil?.role === 'admin'
+  // El admin ya tiene todo en Administración; Equipo es la puerta del supervisor.
+  const esSupervisor = perfil?.role === 'supervisor'
   const iniciales = (perfil?.nombre ?? user?.email ?? '?')
     .split(/[\s.@]+/)
     .filter(Boolean)
@@ -84,6 +87,16 @@ export function Layout() {
               )}
             </NavLink>
           ))}
+          {esSupervisor && (
+            <NavLink to="/equipo">
+              {({ isActive }) => (
+                <span className={clasesNav(isActive)}>
+                  <Users className="size-5" />
+                  Equipo
+                </span>
+              )}
+            </NavLink>
+          )}
           {esAdmin && (
             <NavLink to="/admin">
               {({ isActive }) => (
@@ -177,6 +190,16 @@ export function Layout() {
             )}
           </NavLink>
         ))}
+        {esSupervisor && (
+          <NavLink to="/equipo">
+            {({ isActive }) => (
+              <span className={clasesNav(isActive, true)}>
+                <Users className="size-5" />
+                Equipo
+              </span>
+            )}
+          </NavLink>
+        )}
         {esAdmin && (
           <NavLink to="/admin">
             {({ isActive }) => (

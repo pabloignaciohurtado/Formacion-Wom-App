@@ -4,7 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminEquipo } from '../components/AdminEquipo'
-import { etiquetaRol } from '../lib/roles'
+import { etiquetaRol, puedeAsignar, type Rol } from '../lib/roles'
 import { EstadoConsulta } from './Consultas'
 import type { Tables } from '../lib/database.types'
 
@@ -54,6 +54,35 @@ export default function Admin() {
     void cargar()
   }
 
+  // La "pantalla de equipo": el rol y el supervisor de cada persona se
+  // gestionan aquí. Sin supervisor_id poblado, "asignar a mi equipo" es
+  // incalculable y el término de mayor peso de la liga vale cero.
+  const cambiarRol = async (perfil: Perfil, rol: Rol) => {
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ role: rol })
+      .eq('id', perfil.id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    void cargar()
+  }
+
+  const cambiarSupervisor = async (perfil: Perfil, supervisorId: string | null) => {
+    setError(null)
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ supervisor_id: supervisorId })
+      .eq('id', perfil.id)
+    if (updateError) {
+      setError(updateError.message)
+      return
+    }
+    void cargar()
+  }
+
   const responder = async (consulta: Consulta) => {
     const respuesta = (respuestas[consulta.id] ?? '').trim()
     if (!respuesta) return
@@ -94,6 +123,7 @@ export default function Admin() {
                 <th className="px-5 py-3">Nombre</th>
                 <th className="px-5 py-3">Email</th>
                 <th className="px-5 py-3">Rol</th>
+                <th className="px-5 py-3">Supervisor</th>
                 <th className="px-5 py-3">Estado</th>
                 <th className="px-5 py-3"></th>
               </tr>
@@ -104,17 +134,47 @@ export default function Admin() {
                   <td className="px-5 py-3 font-semibold">{r.nombre}</td>
                   <td className="px-5 py-3 text-tinta-suave">{r.email}</td>
                   <td className="px-5 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${
-                        r.role === 'admin'
-                          ? 'bg-magenta-500/10 text-magenta-500'
-                          : r.role === 'supervisor'
-                            ? 'bg-amber-500/10 text-amber-700'
-                            : 'bg-wom-600/10 text-wom-600'
-                      }`}
-                    >
-                      {etiquetaRol(r.role)}
-                    </span>
+                    {r.id === user?.id ? (
+                      // El propio rol no se toca: evita dejar la plataforma
+                      // sin administradores por un clic.
+                      <span className="rounded-full bg-magenta-500/10 px-2.5 py-0.5 text-xs font-bold uppercase text-magenta-500">
+                        {etiquetaRol(r.role)}
+                      </span>
+                    ) : (
+                      <select
+                        value={r.role}
+                        onChange={(e) => void cambiarRol(r, e.target.value as Rol)}
+                        aria-label={`Rol de ${r.nombre}`}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                      >
+                        <option value="ejecutivo">Ejecutivo</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="admin">Administrador</option>
+                      </select>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    {r.role === 'ejecutivo' ? (
+                      <select
+                        value={r.supervisor_id ?? ''}
+                        onChange={(e) =>
+                          void cambiarSupervisor(r, e.target.value || null)
+                        }
+                        aria-label={`Supervisor de ${r.nombre}`}
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                      >
+                        <option value="">Sin supervisor</option>
+                        {(usuarios ?? [])
+                          .filter((u) => puedeAsignar(u.role) && u.id !== r.id)
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.nombre}
+                            </option>
+                          ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-tinta-suave">—</span>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <span
@@ -151,12 +211,7 @@ export default function Admin() {
 
       <AdminEquipo />
 
-      <AdminActividades
-        totalActivos={(usuarios ?? []).filter((r) => r.activo).length}
-        nombresPorId={Object.fromEntries(
-          (usuarios ?? []).map((r) => [r.id, r.nombre])
-        )}
-      />
+      <AdminActividades />
 
       <h2 className="mt-8 text-lg font-bold">Consultas</h2>
       {!consultas ? (

@@ -23,14 +23,16 @@ interface Datos {
   correctas: number
   repasosPendientes: number
   racha: number
+  // El ranking y los héroes miden PUNTAJE SEMANAL, no XP: son cosas
+  // distintas (el XP acumulado define el nivel; el puntaje, la liga).
   ranking: {
     user_id: string
     nombre: string
     liga: string
-    xp: number
+    puntaje: number
     posicion: number
   }[]
-  heroes: { nombre: string; xp: number; posicion: number }[]
+  heroes: { nombre: string; puntaje: number; posicion: number }[]
   insignias: Set<string>
 }
 
@@ -344,7 +346,9 @@ export default function Panel() {
                   <span className="text-3xl">{MEDALLAS[h.posicion - 1] ?? '🏅'}</span>
                   <div>
                     <p className="font-bold">{h.nombre}</p>
-                    <p className="text-sm text-tinta-suave">{h.xp} XP la semana pasada</p>
+                    <p className="text-sm text-tinta-suave">
+                      {h.puntaje} puntos la semana pasada
+                    </p>
                   </div>
                 </Tarjeta>
               </m.div>
@@ -410,7 +414,7 @@ export default function Panel() {
                 </span>
                 <span className="flex items-center gap-1 font-bold text-magenta-500">
                   <Zap className="size-4 fill-current" />
-                  {r.xp}
+                  {r.puntaje} pts
                 </span>
               </li>
             )
