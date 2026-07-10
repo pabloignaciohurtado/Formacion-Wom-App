@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
 import { MarcaWom } from './MarcaWom'
+import { EstadoConexion } from './EstadoConexion'
 
 const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
@@ -110,6 +111,7 @@ export function Layout() {
           Plataforma de formación interna
         </div>
         <div className="flex items-center gap-3">
+          <EstadoConexion />
           <button
             type="button"
             onClick={alternarTema}

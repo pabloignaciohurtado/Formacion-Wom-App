@@ -11,6 +11,9 @@ export interface PendienteOffline {
 
 const CLAVE = 'cola-offline-v1'
 
+// La UI escucha este evento para reflejar la cola sin hacer polling.
+export const EVENTO_COLA = 'cola-offline-cambio'
+
 function leer(): PendienteOffline[] {
   try {
     return JSON.parse(window.localStorage.getItem(CLAVE) ?? '[]')
@@ -21,6 +24,7 @@ function leer(): PendienteOffline[] {
 
 function escribir(cola: PendienteOffline[]) {
   window.localStorage.setItem(CLAVE, JSON.stringify(cola))
+  window.dispatchEvent(new Event(EVENTO_COLA))
 }
 
 export function encolarOffline(pendiente: PendienteOffline) {
