@@ -26,8 +26,28 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Sin esta guarda, un secret ausente compila igual y publica una app que
+      # revienta en el navegador con "Faltan las variables de entorno".
+      # Es preferible fallar aquí, ruidosamente, que desplegar algo roto.
+      - name: Verificar que los secrets existen
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          faltan=""
+          [ -n "$VITE_SUPABASE_URL" ] || faltan="$faltan VITE_SUPABASE_URL"
+          [ -n "$VITE_SUPABASE_ANON_KEY" ] || faltan="$faltan VITE_SUPABASE_ANON_KEY"
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secrets del repositorio:$faltan"
+            echo "Defínelos en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Compilar con base de Pages
         run: npm run build -- --base=/Formacion-Wom-App/
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Fallback SPA (404.html)
         run: cp dist/index.html dist/404.html
