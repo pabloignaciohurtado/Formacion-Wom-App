@@ -11,26 +11,38 @@
   --color-wom-600: #4d008c;
   --color-wom-700: #451287;
   --color-wom-900: #270046;
+  --color-wom-950: #16002e;
 
-  --color-magenta-500: #e92070;
-  --color-magenta-600: #d01560;
+  --color-magenta-500: #e92070;  /* acento de marca: display y fondos */
+  --color-magenta-600: #d01560;  /* botón: blanco encima da 5.31:1 (AA) */
+  --color-magenta-700: #c2145a;  /* botón hover: 5.93:1 */
 
-  --color-exito: #33cc9e;
+  --color-exito: #33cc9e;        /* relleno: chips, flash, confetti */
+  --color-exito-texto: #0f7a5a;  /* texto: 5.31:1 sobre blanco (AA) */
   --color-tinta: #212529;
   --color-tinta-suave: #494c66;
   --color-niebla: #eff1f3;
 
   --font-sans: 'Poppins', system-ui, sans-serif;
+
+  /* ── Sistema de movimiento WOM (un solo lenguaje) ─────────────
+     Se consume desde CSS (var(--ease-*)) y desde JS (src/lib/motion.ts).
+     Solo lo que tiene consumidor real. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);      /* entradas (expo.out) */
+  --ease-ui: cubic-bezier(0.34, 1.56, 0.64, 1);   /* pops de UI (back) → utilidad ease-ui */
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);   /* cambios de estado */
 }
 
 /* Modo oscuro: se redefinen los tokens, así todos los componentes
    cambian sin tocar sus clases. */
 .dark {
-  --color-white: #221a30;
-  --color-niebla: #140e1e;
+  --color-white: #1c1230;
+  --color-niebla: #120a1e;
   --color-tinta: #f2eef8;
   --color-tinta-suave: #b7aec9;
-  --color-wom-50: #322646;
+  --color-wom-50: #2c2044;
+  --color-wom-950: #0d0018;
+  --color-exito-texto: #33cc9e;
   --color-gray-200: #3b3152;
   --color-gray-300: #4b4166;
   --color-gray-400: #8b81a3;
@@ -40,4 +52,113 @@
 
 body {
   @apply bg-niebla text-tinta antialiased;
+}
+
+/* Grano sutil de marca (textura, no distrae) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Hero vivo del login: orbes de gradiente en loop ─────────────
+   position:absolute; el media query de reduced-motion los deja quietos. */
+.wom-orbe {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+  pointer-events: none;
+}
+.wom-orbe-a {
+  width: 340px;
+  height: 340px;
+  background: var(--color-magenta-500);
+  opacity: 0.55;
+  top: -60px;
+  left: -40px;
+  animation: wom-flota-a 14s var(--ease-inout) infinite alternate;
+}
+.wom-orbe-b {
+  width: 300px;
+  height: 300px;
+  background: var(--color-wom-500);
+  opacity: 0.5;
+  bottom: -80px;
+  right: -40px;
+  animation: wom-flota-b 18s var(--ease-inout) infinite alternate;
+}
+.wom-orbe-c {
+  width: 220px;
+  height: 220px;
+  background: var(--color-exito);
+  opacity: 0.28;
+  top: 40%;
+  left: 45%;
+  animation: wom-flota-c 22s var(--ease-inout) infinite alternate;
+}
+@keyframes wom-flota-a {
+  to {
+    transform: translate(60px, 40px) scale(1.15);
+  }
+}
+@keyframes wom-flota-b {
+  to {
+    transform: translate(-50px, -30px) scale(1.1);
+  }
+}
+@keyframes wom-flota-c {
+  to {
+    transform: translate(-70px, 50px) scale(0.9);
+  }
+}
+
+/* Flash sutil de acierto (Práctica) */
+.wom-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 60%,
+    rgba(51, 204, 158, 0.35),
+    transparent 60%
+  );
+}
+.wom-flash-go {
+  animation: wom-flash 0.6s var(--ease-out);
+}
+@keyframes wom-flash {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Accesibilidad: respetar la preferencia del sistema ──────────
+   Complementa el guard de JS (useReducedMotion + disableForReducedMotion).
+   Degrada a estado final: sin loops, sin transforms largos. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::after {
+    opacity: 0.02;
+  }
 }

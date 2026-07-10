@@ -116,7 +116,7 @@ export default function Admin() {
                   <td className="px-5 py-3">
                     <span
                       className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                        r.activo ? 'text-exito' : 'text-tinta-suave'
+                        r.activo ? 'text-exito-texto' : 'text-tinta-suave'
                       }`}
                     >
                       <span

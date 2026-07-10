@@ -164,7 +164,7 @@ export default function Actividades() {
                 {hechas.map((a) => (
                   <li key={a.id}>
                     <Tarjeta className="flex items-center gap-3 py-3 opacity-70">
-                      <CheckCircle2 className="size-5 shrink-0 text-exito" />
+                      <CheckCircle2 className="size-5 shrink-0 text-exito-texto" />
                       <span className="font-medium line-through">{a.titulo}</span>
                     </Tarjeta>
                   </li>

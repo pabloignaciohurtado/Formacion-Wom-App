@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
+import { EASE_OUT } from '../lib/motion'
 import {
   LayoutDashboard,
   Dumbbell,
@@ -34,6 +35,7 @@ function clasesNav(activo: boolean, movil = false) {
 export function Layout() {
   const { perfil, user, signOut } = useAuth()
   const location = useLocation()
+  const reduce = useReducedMotion()
   const [oscuro, setOscuro] = useState(() =>
     document.documentElement.classList.contains('dark')
   )
@@ -140,9 +142,9 @@ export function Layout() {
       <main className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 lg:px-8 lg:pb-10">
         <motion.div
           key={location.pathname}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: reduce ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
+          transition={{ duration: 0.25, ease: EASE_OUT }}
         >
           <Outlet />
         </motion.div>

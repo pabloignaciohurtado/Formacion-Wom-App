@@ -91,7 +91,7 @@ export function AdminEquipo() {
                     <td className="px-5 py-3">
                       <span
                         className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                          inactivo ? 'text-red-600' : 'text-exito'
+                          inactivo ? 'text-red-600' : 'text-exito-texto'
                         }`}
                       >
                         <span
@@ -110,7 +110,7 @@ export function AdminEquipo() {
                           {r.obligatorias_pendientes} pendientes
                         </span>
                       ) : (
-                        <span className="text-xs font-semibold text-exito">al día</span>
+                        <span className="text-xs font-semibold text-exito-texto">al día</span>
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">

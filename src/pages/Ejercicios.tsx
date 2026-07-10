@@ -80,7 +80,7 @@ function TarjetaDominio({
           <button
             type="button"
             onClick={() => descargarCertificado(nombrePerfil, dominio.titulo)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-exito px-4 py-2 font-semibold text-exito transition-colors hover:bg-exito/10"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-exito px-4 py-2 font-semibold text-exito-texto transition-colors hover:bg-exito/10"
           >
             <Award className="size-5" />
             Descargar certificado

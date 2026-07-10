@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useReducedMotion } from 'motion/react'
 
 export function ContadorAnimado({
   valor,
@@ -8,8 +9,14 @@ export function ContadorAnimado({
   duracion?: number
 }) {
   const [actual, setActual] = useState(0)
+  const reduce = useReducedMotion()
 
   useEffect(() => {
+    // Con reduced motion se muestra el valor final sin animar el conteo.
+    if (reduce) {
+      setActual(valor)
+      return
+    }
     const inicio = performance.now()
     let raf: number
     const tick = (t: number) => {
@@ -20,7 +27,7 @@ export function ContadorAnimado({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [valor, duracion])
+  }, [valor, duracion, reduce])
 
   return <>{actual}</>
 }

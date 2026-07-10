@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import type { Insignia } from '../lib/insignias'
+import { COLORES_WOM, tSpring } from '../lib/motion'
 import { Boton } from './ui'
 
 export function InsigniaModal({
@@ -13,15 +14,17 @@ export function InsigniaModal({
   onCerrar: () => void
   titulo?: string
 }) {
+  const reduce = useReducedMotion()
   useEffect(() => {
-    if (!insignia) return
+    if (!insignia || reduce) return
     confetti({
       particleCount: 90,
       spread: 80,
       origin: { y: 0.4 },
-      colors: ['#4D008C', '#E92070', '#33CC9E', '#A67FC5'],
+      colors: COLORES_WOM,
+      disableForReducedMotion: true,
     })
-  }, [insignia])
+  }, [insignia, reduce])
 
   return (
     <AnimatePresence>
@@ -34,10 +37,10 @@ export function InsigniaModal({
           onClick={onCerrar}
         >
           <motion.div
-            initial={{ scale: 0.7, y: 30 }}
+            initial={{ scale: reduce ? 1 : 0.7, y: reduce ? 0 : 30 }}
             animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ type: 'spring', bounce: 0.45 }}
+            exit={{ scale: reduce ? 1 : 0.8, opacity: 0 }}
+            transition={tSpring}
             className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >

@@ -3,26 +3,14 @@ import type {
   InputHTMLAttributes,
   ReactNode,
 } from 'react'
+import { clasesBoton, type VarianteBoton } from './estilosBoton'
 
 export function Boton({
   variante = 'primario',
   className = '',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variante?: 'primario' | 'secundario' | 'fantasma'
-}) {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-semibold transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wom-600'
-  const variantes = {
-    primario:
-      'bg-magenta-500 text-white shadow-lg shadow-magenta-500/25 hover:bg-magenta-600',
-    secundario:
-      'bg-wom-600 text-white shadow-lg shadow-wom-600/25 hover:bg-wom-700',
-    fantasma: 'text-wom-600 hover:bg-wom-50',
-  }
-  return (
-    <button className={`${base} ${variantes[variante]} ${className}`} {...props} />
-  )
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: VarianteBoton }) {
+  return <button className={clasesBoton(variante, className)} {...props} />
 }
 
 export function Campo({
@@ -53,7 +41,7 @@ export function Tarjeta({
 }) {
   return (
     <div
-      className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5 ${className}`}
+      className={`rounded-[20px] bg-white p-6 shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-1 ring-black/5 dark:ring-white/10 ${className}`}
     >
       {children}
     </div>

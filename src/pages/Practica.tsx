@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Check, X, Zap } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -10,12 +10,11 @@ import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
 import { encolarOffline } from '../lib/colaOffline'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { ContadorAnimado } from '../components/ContadorAnimado'
+import { COLORES_WOM, EASE_OUT, tSpring } from '../lib/motion'
 
 import { XP_ACIERTO, XP_INTENTO } from '../lib/gamificacion'
 
 const EJERCICIOS_POR_SESION = 10
-
-const COLORES_WOM = ['#4D008C', '#E92070', '#33CC9E', '#A67FC5']
 
 type Fase = 'cargando' | 'pregunta' | 'feedback' | 'resumen'
 
@@ -32,6 +31,8 @@ export default function Practica() {
   const [xp, setXp] = useState(0)
   const [xpFlotante, setXpFlotante] = useState<{ id: number; cantidad: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [flash, setFlash] = useState(false)
+  const reduce = useReducedMotion()
 
   useEffect(() => {
     if (!user || !dominio) return
@@ -70,6 +71,7 @@ export default function Practica() {
   // Celebración al terminar la sesión
   useEffect(() => {
     if (fase !== 'resumen' || correctas === 0) return
+    if (reduce) return // sin celebración con reduced motion
     const disparar = (particleCount: number, spread: number, delay: number) =>
       setTimeout(
         () =>
@@ -78,12 +80,13 @@ export default function Practica() {
             spread,
             origin: { y: 0.6 },
             colors: COLORES_WOM,
+            disableForReducedMotion: true,
           }),
         delay
       )
     disparar(120, 75, 0)
     disparar(60, 110, 350)
-  }, [fase, correctas])
+  }, [fase, correctas, reduce])
 
   const ejercicio = cola[indice]
   const objetivo = useMemo(
@@ -121,6 +124,20 @@ export default function Practica() {
     if (correcto) setCorrectas((c) => c + 1)
     setXp((x) => x + ganado)
     setXpFlotante({ id: Date.now(), cantidad: ganado })
+
+    // Momento estrella del acierto: flash sutil + confetti corto y contenido.
+    if (correcto && !reduce) {
+      setFlash(false)
+      requestAnimationFrame(() => setFlash(true))
+      confetti({
+        particleCount: 36,
+        spread: 60,
+        startVelocity: 32,
+        origin: { y: 0.7 },
+        colors: COLORES_WOM,
+        disableForReducedMotion: true,
+      })
+    }
 
     let cardActual = null
     if (navigator.onLine) {
@@ -176,6 +193,7 @@ export default function Practica() {
 
   const siguiente = () => {
     setSeleccion(null)
+    setFlash(false)
     if (indice + 1 >= cola.length) {
       setFase('resumen')
     } else {
@@ -200,20 +218,20 @@ export default function Practica() {
           </>
         ) : (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
+            initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', bounce: 0.45, duration: 0.7 }}
           >
             <Tarjeta className="p-8 text-center">
               <motion.div
-                initial={{ rotate: -12, scale: 0 }}
+                initial={{ rotate: reduce ? 0 : -12, scale: reduce ? 1 : 0 }}
                 animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: 'spring', bounce: 0.6, delay: 0.15 }}
+                transition={{ type: 'spring', bounce: 0.6, delay: reduce ? 0 : 0.15 }}
                 className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-gradient-to-br from-wom-600 to-magenta-500 text-4xl"
               >
                 🏆
               </motion.div>
-              <h1 className="text-2xl font-extrabold">¡Sesión terminada!</h1>
+              <h1 className="text-3xl font-black tracking-[-0.02em]">¡Sesión terminada!</h1>
               <p className="mt-1 text-tinta-suave">{dominio.titulo}</p>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
@@ -255,6 +273,7 @@ export default function Practica() {
 
   return (
     <section className="mx-auto max-w-xl">
+      <div className={`wom-flash ${flash ? 'wom-flash-go' : ''}`} aria-hidden />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">{dominio.titulo}</h1>
         <div className="relative flex items-center gap-3">
@@ -275,9 +294,9 @@ export default function Practica() {
           </AnimatePresence>
           <motion.span
             key={xp}
-            initial={{ scale: 1.35 }}
+            initial={{ scale: reduce ? 1 : 1.35 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', bounce: 0.6 }}
+            transition={tSpring}
             className="flex items-center gap-1 rounded-full bg-wom-600 px-3 py-1 text-sm font-bold text-white"
           >
             <Zap className="size-4 fill-current" />
@@ -302,9 +321,9 @@ export default function Practica() {
 
       <motion.div
         key={ejercicio.id}
-        initial={{ opacity: 0, x: 24 }}
+        initial={{ opacity: 0, x: reduce ? 0 : 24 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
+        transition={{ duration: 0.35, ease: EASE_OUT }}
       >
         <Tarjeta className="mt-6">
           <p className="text-lg font-bold">{ejercicio.enunciado}</p>
@@ -346,7 +365,7 @@ export default function Practica() {
                   <span className="flex items-center justify-between gap-3">
                     {opcion}
                     {esCorrectaMostrada && (
-                      <Check className="size-5 shrink-0 text-exito" />
+                      <Check className="size-5 shrink-0 text-exito-texto" />
                     )}
                     {esIncorrectaElegida && (
                       <X className="size-5 shrink-0 text-red-500" />
@@ -367,7 +386,7 @@ export default function Practica() {
                 className="overflow-hidden"
               >
                 <div className="mt-5 border-t border-niebla pt-5">
-                  <p className={`font-bold ${acerto ? 'text-exito' : 'text-red-500'}`}>
+                  <p className={`font-bold ${acerto ? 'text-exito-texto' : 'text-red-500'}`}>
                     {acerto ? '¡Correcto!' : 'Incorrecto'}
                   </p>
                   <p className="mt-1 text-sm text-tinta-suave">
