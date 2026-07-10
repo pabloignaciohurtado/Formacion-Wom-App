@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
+import { etiquetaRol } from '../lib/roles'
 import { MarcaWom } from './MarcaWom'
 import { EstadoCarga } from './ui'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -125,7 +126,7 @@ export function Layout() {
           <div className="text-right leading-tight hidden sm:block">
             <p className="text-sm font-semibold">{perfil?.nombre ?? user?.email}</p>
             <p className="text-xs text-tinta-suave">
-              {esAdmin ? 'Administrador' : 'Relator'}
+              {etiquetaRol(perfil?.role)}
             </p>
           </div>
           <div className="grid size-10 place-items-center rounded-full bg-wom-600 font-bold text-white">
@@ -154,7 +155,7 @@ export function Layout() {
               cabecera) no se desmonte mientras llega el chunk de la página.
               El ErrorBoundary lo envuelve porque un fallo dentro de una página
               no debe llevarse la navegación por delante; la `key` lo remonta al
-              cambiar de ruta, así el error se limpia y el relator no queda
+              cambiar de ruta, así el error se limpia y quien practica no queda
               encerrado en una pantalla muerta. */}
           <ErrorBoundary key={location.pathname}>
             <Suspense fallback={<EstadoCarga />}>
