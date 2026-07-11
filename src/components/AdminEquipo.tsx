@@ -6,20 +6,93 @@ import { DOMINIOS } from '../data/contenido'
 import { ligaDe } from '../lib/gamificacion'
 import { generarCSV, descargarCSV } from '../lib/csv'
 import {
+  RANGOS,
   contarAtencion,
+  desdeDeRango,
   diasDesde,
   enSegmento,
   precisionPct,
   type FilaEquipo,
+  type RangoFechas,
   type Segmento,
 } from '../lib/seguimiento'
 import { EstadoCarga, Tarjeta } from './ui'
+
+// Puente temporal: los RPC de Nivel 2 (resumen_equipo/precision_por_dominio
+// con rango de fechas, y tendencia_equipo) aún no están en los tipos
+// generados; se regeneran aparte. El cast evita arrastrar todo
+// database.types.ts en este cambio.
+const rpcSuelto = supabase.rpc.bind(supabase) as unknown as (
+  fn: string,
+  args?: Record<string, unknown>
+) => Promise<{ data: unknown; error: unknown }>
 
 type Dificultad = {
   domain_id: string
   intentos: number
   correctas: number
   precision_pct: number
+}
+
+type FilaTendencia = {
+  semana: string
+  intentos: number
+  correctas: number
+  precision_pct: number
+  activos: number
+}
+
+// Tendencia semanal del equipo: barra = ejercicios de la semana (volumen),
+// etiqueta = precisión (calidad). Juntas responden "¿mejora el equipo?" sin
+// que un pico de precisión con dos intentos engañe. SVG puro, sin librerías.
+function GraficoTendencia({ datos }: { datos: FilaTendencia[] }) {
+  const max = Math.max(...datos.map((d) => d.intentos), 1)
+  const ancho = 100 / datos.length
+  return (
+    <svg
+      viewBox="0 0 100 46"
+      className="w-full"
+      role="img"
+      aria-label="Tendencia semanal del equipo: ejercicios y precisión por semana"
+    >
+      {datos.map((d, i) => {
+        const alto = d.intentos > 0 ? Math.max((d.intentos / max) * 34, 2) : 0.8
+        return (
+          <g key={d.semana}>
+            <rect
+              x={i * ancho + ancho * 0.2}
+              y={40 - alto}
+              width={ancho * 0.6}
+              height={alto}
+              rx={1.2}
+              className={d.intentos > 0 ? 'fill-wom-600' : 'fill-gray-300'}
+            />
+            {d.intentos > 0 && (
+              <text
+                x={i * ancho + ancho / 2}
+                y={40 - alto - 1.5}
+                textAnchor="middle"
+                className="fill-tinta"
+                fontSize={2.5}
+                fontWeight={700}
+              >
+                {d.precision_pct}%
+              </text>
+            )}
+            <text
+              x={i * ancho + ancho / 2}
+              y={45}
+              textAnchor="middle"
+              className="fill-tinta-suave"
+              fontSize={2.5}
+            >
+              {d.semana.slice(8, 10)}/{d.semana.slice(5, 7)}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
 }
 
 const SEGMENTOS: { id: Segmento; etiqueta: (n: number) => string; clase: string }[] = [
@@ -50,17 +123,40 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
   const [equipo, setEquipo] = useState<FilaEquipo[] | null>(null)
   const [dificiles, setDificiles] = useState<Dificultad[]>([])
   const [filtro, setFiltro] = useState<Segmento | null>(null)
+  const [rango, setRango] = useState<RangoFechas>('todo')
+  const [tendencia, setTendencia] = useState<FilaTendencia[]>([])
 
+  // Seguimiento y contenido difícil se re-consultan al cambiar el rango.
+  useEffect(() => {
+    let cancelado = false
+    setEquipo(null)
+    setFiltro(null)
+    const desde = desdeDeRango(rango)
+    const cargar = async () => {
+      const [eq, dif] = await Promise.all([
+        rpcSuelto('resumen_equipo', { desde }),
+        rpcSuelto('precision_por_dominio', { desde }),
+      ])
+      if (cancelado) return
+      setEquipo((eq.data as FilaEquipo[] | null) ?? [])
+      setDificiles(
+        ((dif.data as Dificultad[] | null) ?? []).filter(
+          (d) => d.precision_pct < 70
+        )
+      )
+    }
+    void cargar()
+    return () => {
+      cancelado = true
+    }
+  }, [rango])
+
+  // La tendencia son 8 semanas fijas: se carga una vez, no depende del rango.
   useEffect(() => {
     let cancelado = false
     const cargar = async () => {
-      const [eq, dif] = await Promise.all([
-        supabase.rpc('resumen_equipo'),
-        supabase.rpc('precision_por_dominio'),
-      ])
-      if (cancelado) return
-      setEquipo(eq.data ?? [])
-      setDificiles((dif.data ?? []).filter((d) => d.precision_pct < 70))
+      const { data } = await rpcSuelto('tendencia_equipo', { semanas: 8 })
+      if (!cancelado) setTendencia((data as FilaTendencia[] | null) ?? [])
     }
     void cargar()
     return () => {
@@ -121,16 +217,41 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
     <>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">Seguimiento del equipo</h2>
-        {equipo && equipo.length > 0 && (
-          <button
-            type="button"
-            onClick={exportarEquipo}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600"
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Rango de fechas: acota todo el seguimiento y el contenido difícil
+              al período elegido; "Todo" es el histórico completo. */}
+          <div
+            role="group"
+            aria-label="Rango de fechas"
+            className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-semibold"
           >
-            <Download className="size-4" />
-            Exportar CSV{filtro ? ' (filtro)' : ''}
-          </button>
-        )}
+            {RANGOS.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                aria-pressed={rango === r.id}
+                onClick={() => setRango(r.id)}
+                className={`rounded-md px-2.5 py-1 transition-colors ${
+                  rango === r.id
+                    ? 'bg-wom-600 text-white'
+                    : 'text-tinta-suave hover:text-wom-600'
+                }`}
+              >
+                {r.etiqueta}
+              </button>
+            ))}
+          </div>
+          {equipo && equipo.length > 0 && (
+            <button
+              type="button"
+              onClick={exportarEquipo}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600"
+            >
+              <Download className="size-4" />
+              Exportar CSV{filtro ? ' (filtro)' : ''}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Qué atender esta semana: convierte el dato en acción. Cada chip filtra
@@ -256,6 +377,19 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
             </tbody>
           </table>
         </Tarjeta>
+      )}
+
+      {tendencia.some((t) => t.intentos > 0) && (
+        <>
+          <h2 className="mt-8 text-lg font-bold">Tendencia del equipo</h2>
+          <p className="mt-1 text-sm text-tinta-suave">
+            Últimas 8 semanas. La barra es cuántos ejercicios hizo el equipo esa
+            semana; el % es su precisión.
+          </p>
+          <Tarjeta className="mt-3">
+            <GraficoTendencia datos={tendencia} />
+          </Tarjeta>
+        </>
       )}
 
       {dificiles.length > 0 && (
