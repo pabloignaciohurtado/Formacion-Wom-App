@@ -13,9 +13,38 @@ const DIAS_POR_CAJA: Record<number, number> = {
   5: 16,
 }
 
-export function siguienteCaja(cajaActual: number, correcto: boolean): number {
+// Avance de caja con seguridad opcional (aprendizaje basado en confianza):
+//  - error → vuelve a la caja 1, desde donde sea.
+//  - acierto seguro → sube una caja (dominio real).
+//  - acierto con dudas → se queda en la misma caja: el conocimiento frágil
+//    no se espacia hasta consolidarlo con seguridad.
+// Sin el tercer argumento se comporta como antes (acierto = sube), para no
+// romper llamadas ni datos previos a la confianza.
+export function siguienteCaja(
+  cajaActual: number,
+  correcto: boolean,
+  seguro?: boolean
+): number {
   if (!correcto) return 1
+  if (seguro === false) return Math.min(cajaActual, CAJA_MAXIMA)
   return Math.min(cajaActual + 1, CAJA_MAXIMA)
+}
+
+export type ResultadoRespuesta = 'dominado' | 'fragil' | 'brecha' | 'misinformed'
+
+// El 2x2 del aprendizaje basado en confianza (acierto × seguridad):
+//  - dominado    (acierto + seguro): lo sabe firme.
+//  - fragil      (acierto + dudas):  acertó pero sin convicción.
+//  - brecha      (error + dudas):    aún lo está aprendiendo, y lo sabe.
+//  - misinformed (error + seguro):   seguro pero equivocado — el más caro en
+//    atención al cliente, porque dará mal la información sin dudar. Es el que
+//    más conviene detectar y corregir.
+export function clasificarRespuesta(
+  correcto: boolean,
+  seguro: boolean
+): ResultadoRespuesta {
+  if (correcto) return seguro ? 'dominado' : 'fragil'
+  return seguro ? 'misinformed' : 'brecha'
 }
 
 // El repaso vence al INICIO del día, no a la hora en que se practicó.
