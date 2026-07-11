@@ -6,11 +6,26 @@ import { useAuth } from '../auth/useAuth'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
 import { ligaDe, xpTotal, XP_ACIERTO, XP_INTENTO } from '../lib/gamificacion'
+import {
+  precisionPorObjetivo,
+  type PrecisionObjetivo,
+} from '../lib/seguimiento'
 import { Boton, Esqueleto, MensajeError, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Perfil = Tables<'profiles'>
 type Meta = Tables<'goals'>
+
+// objetivo_id → su título y el dominio al que pertenece, para nombrar el drill.
+const OBJETIVOS = new Map<
+  string,
+  { titulo: string; dominio: string; icono: string }
+>()
+for (const d of DOMINIOS) {
+  for (const o of d.objetivos) {
+    OBJETIVOS.set(o.id, { titulo: o.titulo, dominio: d.titulo, icono: d.icono })
+  }
+}
 
 interface Semana {
   etiqueta: string
@@ -71,6 +86,7 @@ export default function FichaRelator() {
     { dominio: string; icono: string; valor: number }[]
   >([])
   const [semanas, setSemanas] = useState<Semana[]>([])
+  const [objetivosFlojos, setObjetivosFlojos] = useState<PrecisionObjetivo[]>([])
   const [stats, setStats] = useState<{ intentos: number; correctas: number } | null>(null)
   const [metas, setMetas] = useState<Meta[]>([])
   const [metaDominio, setMetaDominio] = useState(DOMINIOS[0].id)
@@ -90,7 +106,7 @@ export default function FichaRelator() {
         supabase.from('srs_cards').select('exercise_id, domain_id, caja').eq('user_id', id),
         supabase
           .from('attempts')
-          .select('fecha, correcto')
+          .select('fecha, correcto, objetivo_id')
           .eq('user_id', id)
           .gte('fecha', desde.toISOString()),
         supabase.from('goals').select('*').eq('user_id', id),
@@ -116,6 +132,18 @@ export default function FichaRelator() {
         intentos: filas.length,
         correctas: filas.filter((f) => f.correcto).length,
       })
+
+      // Drill: objetivos donde falla puntualmente (precisión < 70% con al menos
+      // 3 intentos), lo concreto para un 1:1. Los peores primero.
+      setObjetivosFlojos(
+        precisionPorObjetivo(
+          filas.map((f) => ({ objetivo_id: f.objetivo_id, correcto: f.correcto }))
+        )
+          .filter((o) => o.intentos >= 3 && o.precision < 70)
+          .sort((a, b) => a.precision - b.precision)
+          .slice(0, 5)
+      )
+
       // Agrupar XP por semana (lunes) de las últimas 8
       const porSemana = new Map<string, number>()
       for (const f of filas) {
@@ -247,6 +275,39 @@ export default function FichaRelator() {
           </div>
         ))}
       </Tarjeta>
+
+      {objetivosFlojos.length > 0 && (
+        <>
+          <h2 className="mt-8 text-lg font-bold">Objetivos a reforzar</h2>
+          <p className="mt-1 text-sm text-tinta-suave">
+            Dónde falla puntualmente (precisión bajo 70% con al menos 3 intentos
+            en las últimas 8 semanas). Es lo concreto para trabajar en un 1:1.
+          </p>
+          <Tarjeta className="mt-3 space-y-3">
+            {objetivosFlojos.map((o) => {
+              const info = OBJETIVOS.get(o.objetivo_id)
+              return (
+                <div
+                  key={o.objetivo_id}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {info?.icono} {info?.titulo ?? o.objetivo_id}
+                    </p>
+                    <p className="text-xs text-tinta-suave">
+                      {info?.dominio} · {o.correctas}/{o.intentos} correctas
+                    </p>
+                  </div>
+                  <span className="text-lg font-extrabold text-red-600">
+                    {o.precision}%
+                  </span>
+                </div>
+              )
+            })}
+          </Tarjeta>
+        </>
+      )}
 
       <h2 className="mt-8 text-lg font-bold">Metas</h2>
       <Tarjeta className="mt-3">
