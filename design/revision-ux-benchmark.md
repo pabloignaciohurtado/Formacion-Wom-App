@@ -155,3 +155,22 @@ Se trabajó **la dimensión 2**, la palanca estratégica más profunda (el "foso
 - `Practica.tsx`: fase `'confianza'` entre elegir y revelar, con su propio foco de teclado; el confetti/celebración y el flujo offline se mantienen intactos.
 
 **Lo que queda.** La palanca de mayor impacto pendiente es el **vínculo a KPI del rol** (dim. 7): conectar la formación con AHT/FCR/CSAT/conversión, lo que la vuelve "no opcional". Requiere definir qué KPI y de qué fuente entra el dato — una decisión de negocio, no de código. Más abajo en retorno: **Nivel 2 de analítica** (dim. 6, rango de fechas + drill), **topes de intervalo** (dim. 2) y **recompensa canjeable** (dim. 3, decisión de producto).
+
+---
+
+## 12. Re-evaluación v5 — 11 de julio de 2026 (ciclo: analítica de jefaturas Nivel 2)
+
+Se completó **la dimensión 6** con el Nivel 2 que quedaba pendiente. El resto no se mueve.
+
+| # | Dimensión | v2 | v5 | Qué lo movió |
+|---|---|:---:|:---:|---|
+| 6 | Analítica de jefaturas (manager loop) | 7.5 | **8.0** | El panel deja de ser una foto fija: **rango de fechas** (7/30/90 días · todo) que acota el seguimiento y el contenido difícil al período; **tendencia del equipo** (8 semanas: barra = volumen, % = precisión) que responde "¿mejora o empeora?"; y **drill al objetivo** en la ficha del relator ("Objetivos a reforzar") que muestra dónde falla *puntualmente* —no "en Portabilidad" sino "en el objetivo Proceso y requisitos"—, lo concreto para un 1:1. Con esto cierra las tres brechas que el scorecard nombraba (exportar + filtrar en Nivel 1, rango + tendencia en Nivel 2) y supera con holgura el estándar de la categoría (7.0), donde los líderes decepcionan. |
+
+**Promedio: 7.2 → 7.3.** La única dimensión bajo 7.5 es la dim. 7 (vínculo a KPI, 3.0). El panel de jefaturas —el "diferenciador barato" que el §1 identificó— queda por encima del terreno de Axonify/Centrical.
+
+**Detalle técnico.**
+
+- Migración `analitica_jefaturas_nivel2`: `resumen_equipo` y `precision_por_dominio` con params `desde`/`hasta` opcionales (null = todo, sin romper llamadas previas) y nuevo `tendencia_equipo(semanas)` con serie completa de semanas. SECURITY DEFINER con el mismo scoping por `is_admin`/supervisor. Rollback en `docs/rollback-analitica-nivel2.sql`. `get_advisors(security)` sin lints nuevos; RPCs verificados E2E con JWT de admin simulado.
+- Lógica pura `desdeDeRango` y `precisionPorObjetivo` en `src/lib/seguimiento.ts`, con pruebas. `AdminEquipo` suma el selector de rango y el gráfico de tendencia; `FichaRelator` el drill al objetivo (client-side: la RLS de `attempts` deja al admin leer a su equipo).
+
+**Lo que queda.** El único gran salto pendiente es el **vínculo a KPI del rol** (dim. 7, 3.0), en pausa esperando una decisión de negocio (qué KPI y de qué fuente). Menores: **topes de intervalo** del SRS (dim. 2) y **recompensa canjeable** (dim. 3, decisión de producto).
