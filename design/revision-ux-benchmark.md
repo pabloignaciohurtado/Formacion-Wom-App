@@ -135,3 +135,23 @@ Se trabajó el bloque **P1 de la pantalla de práctica**: las dos dimensiones qu
 - *Accesibilidad (dim 8).* El panel de feedback es `role="status"` con `aria-live="polite"`. Un `useEffect` por fase mueve el foco a `siguienteRef` (feedback) o `preguntaRef` (pregunta nueva). `Boton` (`src/components/ui.tsx`) pasa a `forwardRef` para poder enfocarlo. Los rojos de error suben a `red-700` (texto) y `red-600` (ícono).
 
 **Siguientes palancas** (del plan §7): quedan las dos estratégicas que cruzarían el promedio por encima del estándar (7.9) — **confianza en el SRS** (dim. 2, el foso) y **vínculo a KPI del rol** (dim. 7, la más baja en 3.0). Esta última necesita una decisión de negocio: qué KPI (AHT, FCR, CSAT, conversión) y de qué fuente entra el dato. También sigue pendiente el **Nivel 2 de analítica** (dim. 6) y una **recompensa canjeable** (dim. 3), ambas con decisiones de producto/datos.
+
+---
+
+## 11. Re-evaluación v4 — 11 de julio de 2026 (ciclo: confianza en el SRS)
+
+Se trabajó **la dimensión 2**, la palanca estratégica más profunda (el "foso" del §5). El resto no se mueve.
+
+| # | Dimensión | v1 | v4 | Qué lo movió |
+|---|---|:---:|:---:|---|
+| 2 | Repaso espaciado (SRS) y retención | 7.0 | **8.0** | **Aprendizaje basado en confianza.** Entre elegir y revelar, el relator marca "¿qué tan seguro/a?" (un solo toque). El SRS usa la seguridad: acierto seguro sube de caja, acierto con dudas se queda (conocimiento frágil), el error vuelve a la caja 1. Y el feedback nombra el cuadrante del 2×2, resaltando el **seguro-pero-equivocado** (el *Misinformed*): el caso más caro en atención, porque el relator daría mal la información sin dudar. Es exactamente lo que el §5 marcaba como la capa que separa "quiz gamificado" de "aprendizaje que cambia conducta". No sube más porque quedan los **topes de intervalo más largos** (la caja máxima sigue en 16 días), un afinamiento menor. |
+
+**Promedio: 7.1 → 7.2.** Siete de las ocho dimensiones quedan en 7.5+. La única baja es la dim. 7 (vínculo a KPI, 3.0), que es la última palanca estratégica y la que necesita una decisión de negocio para arrancar.
+
+**Detalle técnico.**
+
+- Migración `intentos_con_confianza`: columna `attempts.confianza` (boolean, nullable; los intentos previos quedan en null). Rollback en `docs/rollback-confianza-srs.sql`. `get_advisors(security)` sin lints nuevos; insert con `confianza` verificado E2E contra la base (transacción con rollback, cero residuo).
+- Lógica pura en `src/lib/srs.ts`: `siguienteCaja(caja, correcto, seguro?)` (el 3er argumento es opcional → compatibilidad hacia atrás) y `clasificarRespuesta()` (el 2×2), ambas con pruebas.
+- `Practica.tsx`: fase `'confianza'` entre elegir y revelar, con su propio foco de teclado; el confetti/celebración y el flujo offline se mantienen intactos.
+
+**Lo que queda.** La palanca de mayor impacto pendiente es el **vínculo a KPI del rol** (dim. 7): conectar la formación con AHT/FCR/CSAT/conversión, lo que la vuelve "no opcional". Requiere definir qué KPI y de qué fuente entra el dato — una decisión de negocio, no de código. Más abajo en retorno: **Nivel 2 de analítica** (dim. 6, rango de fechas + drill), **topes de intervalo** (dim. 2) y **recompensa canjeable** (dim. 3, decisión de producto).
