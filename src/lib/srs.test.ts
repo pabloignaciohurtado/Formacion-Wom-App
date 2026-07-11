@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CAJA_MAXIMA,
+  clasificarRespuesta,
   estaPendiente,
   maestriaDominio,
   proximoRepaso,
@@ -18,6 +19,26 @@ describe('siguienteCaja', () => {
   it('vuelve a la caja 1 al fallar, desde donde sea', () => {
     expect(siguienteCaja(5, false)).toBe(1)
     expect(siguienteCaja(1, false)).toBe(1)
+  })
+
+  it('acierto seguro sube de caja; acierto con dudas se queda', () => {
+    expect(siguienteCaja(2, true, true)).toBe(3)
+    expect(siguienteCaja(2, true, false)).toBe(2)
+    expect(siguienteCaja(CAJA_MAXIMA, true, false)).toBe(CAJA_MAXIMA)
+  })
+  it('el error vuelve a la caja 1 sin importar la seguridad', () => {
+    expect(siguienteCaja(4, false, true)).toBe(1)
+    expect(siguienteCaja(4, false, false)).toBe(1)
+  })
+})
+
+describe('clasificarRespuesta', () => {
+  it('cruza acierto × seguridad en los cuatro cuadrantes', () => {
+    expect(clasificarRespuesta(true, true)).toBe('dominado')
+    expect(clasificarRespuesta(true, false)).toBe('fragil')
+    expect(clasificarRespuesta(false, false)).toBe('brecha')
+    // El caso caro: seguro pero equivocado.
+    expect(clasificarRespuesta(false, true)).toBe('misinformed')
   })
 })
 
