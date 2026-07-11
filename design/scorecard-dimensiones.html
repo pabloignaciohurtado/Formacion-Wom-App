@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scorecard UX/UI — Formación WOM · dimensiones de evaluación</title>
+<style>
+  :root{
+    --morado:#6d2c91; --morado-osc:#4a1d63; --magenta:#e6197e;
+    --tinta:#1a1523; --tinta-suave:#6b6577; --linea:#ece8f1;
+    --niebla:#f7f5fb; --blanco:#fff;
+    --verde:#15803d; --verde-bg:#ecfdf5; --verde-bd:#a7f3d0;
+    --ambar:#b45309; --ambar-bg:#fffbeb; --ambar-bd:#fcd9a5;
+    --rojo:#c81e3a;  --rojo-bg:#fef2f5;  --rojo-bd:#f6c2cd;
+    --sombra:0 1px 2px rgba(26,21,35,.04), 0 8px 24px rgba(74,29,99,.07);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--niebla); color:var(--tinta);
+    font-family:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:28px 20px 56px}
+
+  /* ---------- encabezado ---------- */
+  .head{
+    background:linear-gradient(135deg,var(--morado) 0%,var(--morado-osc) 60%,#3a1550 100%);
+    color:#fff; border-radius:24px; padding:30px 30px 26px; box-shadow:var(--sombra);
+    position:relative; overflow:hidden;
+  }
+  .head::after{content:""; position:absolute; right:-70px; top:-70px; width:260px; height:260px;
+    background:radial-gradient(circle,var(--magenta) 0%,transparent 70%); opacity:.35}
+  .kicker{font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.8; font-weight:600; margin:0}
+  .head h1{margin:.35rem 0 .2rem; font-size:clamp(1.4rem,3.4vw,2rem); font-weight:800; letter-spacing:-.02em; max-width:24ch}
+  .head p.sub{margin:0; opacity:.85; font-size:14px; max-width:60ch}
+
+  .head-grid{display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; position:relative; z-index:1}
+  @media (max-width:640px){.head-grid{grid-template-columns:1fr}}
+
+  .prom{display:flex; align-items:center; gap:18px; background:rgba(255,255,255,.1);
+    border:1px solid rgba(255,255,255,.18); border-radius:20px; padding:16px 20px; backdrop-filter:blur(4px)}
+  .ring{position:relative; width:96px; height:96px; flex:none}
+  .ring .val{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center}
+  .ring .val b{font-size:26px; font-weight:800; line-height:1}
+  .ring .val small{font-size:10px; opacity:.8; letter-spacing:.04em}
+  .prom-meta{font-size:13px}
+  .prom-meta .l{opacity:.8}
+  .prom-meta b{font-size:15px}
+  .spark{margin-top:8px}
+  .spark .cap{font-size:11px; opacity:.75; margin-top:2px}
+
+  /* ---------- leyenda ---------- */
+  .leyenda{display:flex; flex-wrap:wrap; gap:14px 20px; margin:22px 2px 6px; font-size:12.5px; color:var(--tinta-suave)}
+  .leyenda span{display:inline-flex; align-items:center; gap:7px}
+  .dot{width:11px; height:11px; border-radius:50%; flex:none}
+  .dot.v{background:var(--verde)} .dot.a{background:var(--ambar)} .dot.r{background:var(--rojo)}
+
+  /* ---------- grilla de tarjetas ---------- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:14px}
+  .card{
+    background:var(--blanco); border:1px solid var(--linea); border-radius:20px;
+    padding:18px 18px 16px; box-shadow:var(--sombra); display:flex; flex-direction:column; gap:12px;
+    border-top:4px solid var(--bd);
+  }
+  .card.v{--ac:var(--verde); --bd:var(--verde-bd); --bg:var(--verde-bg)}
+  .card.a{--ac:var(--ambar); --bd:var(--ambar-bd); --bg:var(--ambar-bg)}
+  .card.r{--ac:var(--rojo);  --bd:var(--rojo-bd);  --bg:var(--rojo-bg)}
+
+  .c-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+  .num{width:30px; height:30px; border-radius:9px; background:var(--niebla); color:var(--morado);
+    font-weight:800; font-size:14px; display:grid; place-items:center; flex:none}
+  .pill{font-size:11px; font-weight:700; letter-spacing:.02em; padding:4px 10px; border-radius:999px;
+    background:var(--bg); color:var(--ac); border:1px solid var(--bd); white-space:nowrap}
+  .titulo{font-weight:700; font-size:15.5px; letter-spacing:-.01em; margin:0; line-height:1.25}
+
+  .scoreline{display:flex; align-items:baseline; gap:8px}
+  .score{font-size:34px; font-weight:800; letter-spacing:-.02em; color:var(--ac); line-height:1}
+  .score small{font-size:15px; color:var(--tinta-suave); font-weight:600}
+  .est{font-size:12.5px; color:var(--tinta-suave); margin-left:auto; text-align:right}
+  .est b{color:var(--tinta)}
+
+  .bar{position:relative; height:9px; border-radius:6px; background:var(--niebla); overflow:visible}
+  .bar .fill{position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:var(--ac)}
+  .bar .mark{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--tinta);
+    opacity:.55; border-radius:2px}
+  .bar .mark::after{content:"estándar"; position:absolute; top:-15px; left:50%; transform:translateX(-50%);
+    font-size:9px; color:var(--tinta-suave); white-space:nowrap}
+
+  .ref{font-size:12px; color:var(--tinta-suave)}
+  .ref b{color:var(--tinta); font-weight:600}
+  .gap{font-size:12.5px; color:var(--tinta); margin:0}
+  .foot{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px;
+    border-top:1px dashed var(--linea); padding-top:10px}
+  .evo{font-size:12px; color:var(--tinta-suave); display:inline-flex; align-items:center; gap:6px}
+  .delta{font-weight:700; font-size:11.5px; padding:2px 8px; border-radius:999px}
+  .delta.up{background:var(--verde-bg); color:var(--verde)}
+  .delta.flat{background:var(--niebla); color:var(--tinta-suave)}
+
+  .noton{margin-top:26px; background:var(--blanco); border:1px solid var(--linea); border-radius:16px;
+    padding:16px 18px; font-size:13px; color:var(--tinta-suave); box-shadow:var(--sombra)}
+  .noton b{color:var(--tinta)}
+  .piefecha{margin-top:16px; font-size:12px; color:var(--tinta-suave); text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <div class="head-grid">
+      <div>
+        <p class="kicker">Benchmark UX/UI · Formación WOM vs. líderes del mercado</p>
+        <h1>Dimensiones de evaluación</h1>
+        <p class="sub">Ocho dimensiones puntuadas 1–10 contra el estándar de la categoría (no contra la perfección). Puntaje vigente tras el ciclo v5 · 11 de julio de 2026.</p>
+      </div>
+      <div class="prom">
+        <div class="ring" role="img" aria-label="Promedio 7.3 de 10">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="9"/>
+            <circle cx="48" cy="48" r="42" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"
+              stroke-dasharray="263.9" stroke-dashoffset="71.3" transform="rotate(-90 48 48)"/>
+          </svg>
+          <div class="val"><b>7.3</b><small>promedio</small></div>
+        </div>
+        <div class="prom-meta">
+          <div class="l">Estándar de categoría</div>
+          <b>7.9</b>
+          <svg class="spark" width="150" height="40" viewBox="0 0 150 40" aria-label="Evolución del promedio: 6.3, 6.8, 7.1, 7.2, 7.3">
+            <polyline fill="none" stroke="var(--magenta)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              points="6,32 42,20 78,13 114,11 144,9"/>
+            <circle cx="144" cy="9" r="3.5" fill="#fff"/>
+          </svg>
+          <div class="cap">6.3 → 7.3 en 5 ciclos</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="leyenda">
+    <span><i class="dot v"></i> En estándar o por encima</span>
+    <span><i class="dot a"></i> Bajo por poco (brecha ≤ 0.5)</span>
+    <span><i class="dot r"></i> Palanca estratégica pendiente</span>
+  </div>
+
+  <section class="grid">
+
+    <!-- 1 -->
+    <article class="card a">
+      <div class="c-top"><div class="num">1</div><span class="pill">Bajo por poco</span></div>
+      <h2 class="titulo">Actividad núcleo y feedback</h2>
+      <div class="scoreline">
+        <span class="score">8.0<small>/10</small></span>
+        <span class="est">estándar <b>8.5</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:80%"></div><div class="mark" style="left:85%"></div></div>
+      <p class="ref">Referencia: <b>EdApp · Duolingo</b></p>
+      <p class="gap">Feedback inmediato que explica el porqué y no auto-avanza; se limpió la celebración redundante y el enunciado ya es el foco. Queda solo afinamiento fino.</p>
+      <div class="foot"><span class="evo">v1 7.5 → 8.0</span><span class="delta up">▲ +0.5</span></div>
+    </article>
+
+    <!-- 2 -->
+    <article class="card v">
+      <div class="c-top"><div class="num">2</div><span class="pill">En estándar</span></div>
+      <h2 class="titulo">Repaso espaciado (SRS) y retención</h2>
+      <div class="scoreline">
+        <span class="score">8.0<small>/10</small></span>
+        <span class="est">estándar <b>8.0</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:80%"></div><div class="mark" style="left:80%"></div></div>
+      <p class="ref">Referencia: <b>Axonify · Anki · EdApp</b></p>
+      <p class="gap">Leitner real + <b>aprendizaje basado en confianza</b>: detecta al “seguro pero equivocado” (Misinformed), el caso más caro en atención. Queda: topes de intervalo más largos.</p>
+      <div class="foot"><span class="evo">v1 7.0 → 8.0</span><span class="delta up">▲ +1.0</span></div>
+    </article>
+
+    <!-- 3 -->
+    <article class="card v">
+      <div class="c-top"><div class="num">3</div><span class="pill">En estándar</span></div>
+      <h2 class="titulo">Gamificación y progresión</h2>
+      <div class="scoreline">
+        <span class="score">8.0<small>/10</small></span>
+        <span class="est">estándar <b>8.0</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:80%"></div><div class="mark" style="left:80%"></div></div>
+      <p class="ref">Referencia: <b>Duolingo · Centrical</b></p>
+      <p class="gap">A la par: XP, niveles, racha, insignias, certificados y ranking. Falta una recompensa <b>canjeable/tangible</b> (tienda de puntos).</p>
+      <div class="foot"><span class="evo">sin cambios este ciclo</span><span class="delta flat">— 0.0</span></div>
+    </article>
+
+    <!-- 4 -->
+    <article class="card v">
+      <div class="c-top"><div class="num">4</div><span class="pill">En estándar</span></div>
+      <h2 class="titulo">Ligas y competencia (calibración)</h2>
+      <div class="scoreline">
+        <span class="score">7.5<small>/10</small></span>
+        <span class="est">estándar <b>7.5</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:75%"></div><div class="mark" style="left:75%"></div></div>
+      <p class="ref">Referencia: <b>Centrical</b></p>
+      <p class="gap">Ranking por división (compites en tu tier, no global), zonas de ascenso/descenso y auto-competencia. La fórmula ya premia corrección sobre velocidad. Queda: recompensa por equipo.</p>
+      <div class="foot"><span class="evo">v1 5.0 → 7.5</span><span class="delta up">▲ +2.5</span></div>
+    </article>
+
+    <!-- 5 -->
+    <article class="card a">
+      <div class="c-top"><div class="num">5</div><span class="pill">Bajo por poco</span></div>
+      <h2 class="titulo">Onboarding y fricción al valor</h2>
+      <div class="scoreline">
+        <span class="score">8.0<small>/10</small></span>
+        <span class="est">estándar <b>8.5</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:80%"></div><div class="mark" style="left:85%"></div></div>
+      <p class="ref">Referencia: <b>Axonify · 7taps</b></p>
+      <p class="gap">“Repasar ahora” abre directo una sesión cross-dominio con las tarjetas vencidas. El cold-start aún pide login + activación por admin (estándar top-down, no un hueco real).</p>
+      <div class="foot"><span class="evo">v1 7.0 → 8.0</span><span class="delta up">▲ +1.0</span></div>
+    </article>
+
+    <!-- 6 -->
+    <article class="card v">
+      <div class="c-top"><div class="num">6</div><span class="pill">Sobre estándar</span></div>
+      <h2 class="titulo">Analítica de jefaturas (manager loop)</h2>
+      <div class="scoreline">
+        <span class="score">8.0<small>/10</small></span>
+        <span class="est">estándar <b>7.0</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:80%"></div><div class="mark" style="left:70%"></div></div>
+      <p class="ref">Referencia: <b>Axonify · Centrical</b></p>
+      <p class="gap">“Qué atender esta semana” accionable, export CSV, filtros, <b>rango de fechas</b>, tendencia del equipo y drill al objetivo en la ficha. El diferenciador barato del §1: supera a los líderes.</p>
+      <div class="foot"><span class="evo">v1 6.5 → 8.0</span><span class="delta up">▲ +1.5</span></div>
+    </article>
+
+    <!-- 7 -->
+    <article class="card r">
+      <div class="c-top"><div class="num">7</div><span class="pill">Pendiente (decisión)</span></div>
+      <h2 class="titulo">Vínculo formación ↔ KPI del negocio</h2>
+      <div class="scoreline">
+        <span class="score">3.0<small>/10</small></span>
+        <span class="est">estándar <b>8.5</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:30%"></div><div class="mark" style="left:85%"></div></div>
+      <p class="ref">Referencia: <b>Axonify · Centrical</b></p>
+      <p class="gap">Hoy se mide curso/precisión/XP, <b>no</b> AHT, FCR, CSAT ni conversión. Es lo que vuelve la formación “no opcional”. La última palanca estratégica: espera decidir qué KPI y de qué fuente.</p>
+      <div class="foot"><span class="evo">sin cambios · en pausa</span><span class="delta flat">— 0.0</span></div>
+    </article>
+
+    <!-- 8 -->
+    <article class="card v">
+      <div class="c-top"><div class="num">8</div><span class="pill">En estándar</span></div>
+      <h2 class="titulo">Accesibilidad y consistencia de UI</h2>
+      <div class="scoreline">
+        <span class="score">7.5<small>/10</small></span>
+        <span class="est">estándar <b>7.5</b></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div class="fill" style="width:75%"></div><div class="mark" style="left:75%"></div></div>
+      <p class="ref">Referencia: <b>WCAG · Duolingo</b></p>
+      <p class="gap">En la pantalla núcleo: <b>aria-live</b> en el feedback, foco de teclado que no se pierde y contraste AA. Queda una pasada WCAG completa por el resto de las pantallas.</p>
+      <div class="foot"><span class="evo">v1 6.0 → 7.5</span><span class="delta up">▲ +1.5</span></div>
+    </article>
+
+  </section>
+
+  <p class="noton">
+    <b>Cómo leer esto.</b> El puntaje se mide contra el <b>estándar de la categoría</b> (la marca en cada barra), no contra la perfección: llegar al estándar en una dimensión ya es “a la par de los líderes”. Siete de las ocho dimensiones están en 7.5+; la única baja es la <b>dim. 7</b>, la palanca estratégica que necesita una decisión de negocio para arrancar. La honestidad del bench es su valor: <b>una dimensión sin trabajo real no se mueve</b>.
+  </p>
+  <p class="piefecha">Formación WOM · scorecard v5 · 11 de julio de 2026</p>
+
+</div>
+</body>
+</html>
