@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { Check, X, Zap } from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
@@ -45,8 +45,13 @@ export default function Practica() {
   const [xpFlotante, setXpFlotante] = useState<{ id: number; cantidad: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
-  const [flash, setFlash] = useState(false)
   const reduce = useReducedMotion()
+
+  // Foco de teclado: al responder salta a "Siguiente"; al avanzar, al enunciado
+  // de la nueva pregunta. Así el foco no se pierde en un botón deshabilitado y
+  // el lector de pantalla lee lo que corresponde en cada paso.
+  const siguienteRef = useRef<HTMLButtonElement>(null)
+  const preguntaRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -123,6 +128,14 @@ export default function Practica() {
     disparar(60, 110, 350)
   }, [fase, correctas, reduce])
 
+  // Foco de teclado por fase: al feedback → "Siguiente"; a una pregunta nueva →
+  // su enunciado (que el lector de pantalla lo lea). Evita que el foco se pierda
+  // en el botón de opción que quedó deshabilitado al responder.
+  useEffect(() => {
+    if (fase === 'feedback') siguienteRef.current?.focus()
+    else if (fase === 'pregunta') preguntaRef.current?.focus()
+  }, [fase, indice])
+
   const item = cola[indice]
   const ejercicio = item?.ejercicio
   const dominioActual = item?.dominio
@@ -164,19 +177,10 @@ export default function Practica() {
     setXp((x) => x + ganado)
     setXpFlotante({ id: Date.now(), cantidad: ganado })
 
-    // Momento estrella del acierto: flash sutil + confetti corto y contenido.
-    if (correcto && !reduce) {
-      setFlash(false)
-      requestAnimationFrame(() => setFlash(true))
-      confetti({
-        particleCount: 36,
-        spread: 60,
-        startVelocity: 32,
-        origin: { y: 0.7 },
-        colors: COLORES_WOM,
-        disableForReducedMotion: true,
-      })
-    }
+    // El acierto se marca con la propia respuesta (verde + check), el "+XP" y la
+    // explicación. Sin flash a pantalla completa ni confetti por pregunta: eran
+    // ruido que tapaba el enunciado. El confetti se reserva para el cierre de
+    // la sesión, que es el momento de celebrar.
 
     let cardActual = null
     if (navigator.onLine) {
@@ -237,7 +241,6 @@ export default function Practica() {
   const siguiente = () => {
     setSeleccion(null)
     setAviso(null)
-    setFlash(false)
     if (indice + 1 >= cola.length) {
       setFase('resumen')
     } else {
@@ -330,7 +333,6 @@ export default function Practica() {
 
   return (
     <section className="mx-auto max-w-xl">
-      <div className={`wom-flash ${flash ? 'wom-flash-go' : ''}`} aria-hidden />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold">
           {modoRepaso ? 'Repaso' : dominioActual.titulo}
@@ -393,7 +395,16 @@ export default function Practica() {
         transition={{ duration: 0.35, ease: EASE_OUT }}
       >
         <Tarjeta className="mt-6">
-          <p className="text-lg font-bold">{ejercicio.enunciado}</p>
+          {/* El enunciado es el foco visual (más peso que el rótulo de dominio)
+              y el ancla de foco de teclado al avanzar; -1 lo hace enfocable por
+              programa sin meterlo en el orden de tabulación. */}
+          <p
+            ref={preguntaRef}
+            tabIndex={-1}
+            className="text-xl font-bold leading-snug focus:outline-none"
+          >
+            {ejercicio.enunciado}
+          </p>
 
           <div className="mt-5 space-y-2.5">
             {orden.map((indiceOriginal, i) => {
@@ -435,7 +446,7 @@ export default function Practica() {
                       <Check className="size-5 shrink-0 text-exito-texto" />
                     )}
                     {esIncorrectaElegida && (
-                      <X className="size-5 shrink-0 text-red-500" />
+                      <X className="size-5 shrink-0 text-red-600" />
                     )}
                   </span>
                 </m.button>
@@ -452,8 +463,12 @@ export default function Practica() {
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
-                <div className="mt-5 border-t border-niebla pt-5">
-                  <p className={`font-bold ${acerto ? 'text-exito-texto' : 'text-red-500'}`}>
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="mt-5 border-t border-niebla pt-5"
+                >
+                  <p className={`font-bold ${acerto ? 'text-exito-texto' : 'text-red-700'}`}>
                     {acerto ? '¡Correcto!' : 'Incorrecto'}
                   </p>
                   <p className="mt-1 text-sm text-tinta-suave">
@@ -469,7 +484,12 @@ export default function Practica() {
                       <MensajeError>{error}</MensajeError>
                     </div>
                   )}
-                  <Boton type="button" onClick={siguiente} className="mt-4 w-full">
+                  <Boton
+                    ref={siguienteRef}
+                    type="button"
+                    onClick={siguiente}
+                    className="mt-4 w-full"
+                  >
                     {indice + 1 >= cola.length ? 'Ver resumen' : 'Siguiente'}
                   </Boton>
                 </div>
