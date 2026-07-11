@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { Check, X, Zap } from 'lucide-react'
+import { Check, HelpCircle, ShieldCheck, X, Zap } from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { obtenerDominio } from '../data/contenido'
 import { construirColaRepaso, type ItemPractica } from '../data/repaso'
-import { estaPendiente, proximoRepaso, siguienteCaja } from '../lib/srs'
+import {
+  clasificarRespuesta,
+  estaPendiente,
+  proximoRepaso,
+  siguienteCaja,
+  type ResultadoRespuesta,
+} from '../lib/srs'
+import type { TablesInsert } from '../lib/database.types'
 import { encolarOffline } from '../lib/colaOffline'
 import {
   Boton,
@@ -23,7 +30,18 @@ import { XP_ACIERTO, XP_INTENTO } from '../lib/gamificacion'
 
 const EJERCICIOS_POR_SESION = 10
 
-type Fase = 'cargando' | 'pregunta' | 'feedback' | 'resumen'
+// 'confianza': entre elegir y revelar, el relator marca qué tan seguro está.
+type Fase = 'cargando' | 'pregunta' | 'confianza' | 'feedback' | 'resumen'
+
+// Nota pedagógica según el cruce acierto × seguridad. El caso 'misinformed'
+// (seguro pero equivocado) se resalta: es el más importante de corregir.
+const NOTA_RESULTADO: Record<ResultadoRespuesta, string> = {
+  dominado: 'Lo sabías con seguridad: se agenda más lejos.',
+  fragil: 'Correcto, pero no lo tenías firme. Volverá pronto para afianzarlo.',
+  brecha: 'Aún lo estás aprendiendo, y lo sabías: por eso marcaste dudas.',
+  misinformed:
+    'Estabas seguro/a, pero no era. Estos son los más importantes de corregir: los darías por ciertos frente al cliente.',
+}
 
 export default function Practica() {
   const { dominioId } = useParams()
@@ -40,6 +58,7 @@ export default function Practica() {
   const [indice, setIndice] = useState(0)
   const [fase, setFase] = useState<Fase>('cargando')
   const [seleccion, setSeleccion] = useState<number | null>(null)
+  const [seguro, setSeguro] = useState<boolean | null>(null)
   const [correctas, setCorrectas] = useState(0)
   const [xp, setXp] = useState(0)
   const [xpFlotante, setXpFlotante] = useState<{ id: number; cantidad: number } | null>(null)
@@ -52,6 +71,7 @@ export default function Practica() {
   // el lector de pantalla lee lo que corresponde en cada paso.
   const siguienteRef = useRef<HTMLButtonElement>(null)
   const preguntaRef = useRef<HTMLParagraphElement>(null)
+  const confianzaRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -133,6 +153,7 @@ export default function Practica() {
   // en el botón de opción que quedó deshabilitado al responder.
   useEffect(() => {
     if (fase === 'feedback') siguienteRef.current?.focus()
+    else if (fase === 'confianza') confianzaRef.current?.focus()
     else if (fase === 'pregunta') preguntaRef.current?.focus()
   }, [fase, indice])
 
@@ -164,14 +185,29 @@ export default function Practica() {
     return <Navigate to="/ejercicios" replace />
   }
 
-  const responder = async (posicion: number) => {
-    if (!user || !ejercicio || !dominioActual || fase !== 'pregunta') return
+  // Elegir una alternativa no revela el resultado: pasa a pedir la seguridad.
+  // Mientras se está en 'confianza' se puede cambiar de alternativa.
+  const elegir = (posicion: number) => {
+    if (fase !== 'pregunta' && fase !== 'confianza') return
     setSeleccion(posicion)
+    setFase('confianza')
+  }
+
+  const confirmar = async (seguroElegido: boolean) => {
+    if (
+      !user ||
+      !ejercicio ||
+      !dominioActual ||
+      seleccion === null ||
+      fase !== 'confianza'
+    )
+      return
+    setSeguro(seguroElegido)
     setFase('feedback')
     setError(null)
     setAviso(null)
 
-    const correcto = orden[posicion] === ejercicio.correcta
+    const correcto = orden[seleccion] === ejercicio.correcta
     const ganado = correcto ? XP_ACIERTO : XP_INTENTO
     if (correcto) setCorrectas((c) => c + 1)
     setXp((x) => x + ganado)
@@ -193,7 +229,7 @@ export default function Practica() {
       cardActual = data
     }
 
-    const caja = siguienteCaja(cardActual?.caja ?? 1, correcto)
+    const caja = siguienteCaja(cardActual?.caja ?? 1, correcto, seguroElegido)
     const ahora = new Date().toISOString()
     const payloadIntento = {
       id: crypto.randomUUID(),
@@ -203,6 +239,7 @@ export default function Practica() {
       objetivo_id: ejercicio.objetivoId,
       puntaje: correcto ? 100 : 0,
       correcto,
+      confianza: seguroElegido,
       fecha: ahora,
     }
     const payloadTarjeta = {
@@ -227,7 +264,12 @@ export default function Practica() {
     }
 
     const [intento, tarjeta] = await Promise.all([
-      supabase.from('attempts').insert(payloadIntento),
+      // `confianza` es una columna nueva (migración intentos_con_confianza); los
+      // tipos generados aún no la reflejan (se regeneran aparte). El cast la deja
+      // pasar sin arrastrar todo database.types.ts; en runtime sí se envía.
+      supabase
+        .from('attempts')
+        .insert(payloadIntento as TablesInsert<'attempts'>),
       supabase.from('srs_cards').upsert(payloadTarjeta),
     ])
     if (intento.error || tarjeta.error) {
@@ -240,6 +282,7 @@ export default function Practica() {
 
   const siguiente = () => {
     setSeleccion(null)
+    setSeguro(null)
     setAviso(null)
     if (indice + 1 >= cola.length) {
       setFase('resumen')
@@ -414,6 +457,12 @@ export default function Practica() {
                 'w-full rounded-xl border-2 border-transparent bg-niebla px-4 py-3 text-left font-medium transition-colors'
               if (fase === 'pregunta') {
                 clase += ' hover:border-wom-600 hover:bg-white cursor-pointer'
+              } else if (fase === 'confianza') {
+                // Aún no se revela: solo se marca la elegida, en neutro.
+                clase +=
+                  i === seleccion
+                    ? ' border-wom-600 bg-wom-50'
+                    : ' opacity-50 hover:opacity-100 cursor-pointer'
               } else if (esLaCorrecta) {
                 clase += ' border-exito bg-exito/10'
               } else if (i === seleccion) {
@@ -438,7 +487,7 @@ export default function Practica() {
                   transition={{ duration: 0.45 }}
                   className={clase}
                   disabled={fase === 'feedback'}
-                  onClick={() => void responder(i)}
+                  onClick={() => elegir(i)}
                 >
                   <span className="flex items-center justify-between gap-3">
                     {opcion}
@@ -453,6 +502,41 @@ export default function Practica() {
               )
             })}
           </div>
+
+          {/* Paso de confianza: entre elegir y revelar. Capturar la seguridad
+              distingue "lo sé" de "adiviné" y detecta al seguro-pero-equivocado
+              (lo más caro en atención). Un solo toque más. */}
+          {fase === 'confianza' && (
+            <div
+              role="group"
+              aria-label="Confianza en tu respuesta"
+              className="mt-5 border-t border-niebla pt-5"
+            >
+              <p className="font-bold">¿Qué tan seguro/a estás?</p>
+              <p className="mt-1 text-sm text-tinta-suave">
+                Lo que sabes firme se espacia; lo dudoso vuelve antes.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <button
+                  ref={confianzaRef}
+                  type="button"
+                  onClick={() => void confirmar(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-wom-600 bg-wom-50 px-4 py-3 font-bold text-wom-600 transition-colors hover:bg-wom-600 hover:text-white"
+                >
+                  <ShieldCheck className="size-5" />
+                  Seguro/a
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void confirmar(false)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-bold text-tinta-suave transition-colors hover:border-tinta-suave"
+                >
+                  <HelpCircle className="size-5" />
+                  Con dudas
+                </button>
+              </div>
+            </div>
+          )}
 
           <AnimatePresence>
             {fase === 'feedback' && (
@@ -471,7 +555,23 @@ export default function Practica() {
                   <p className={`font-bold ${acerto ? 'text-exito-texto' : 'text-red-700'}`}>
                     {acerto ? '¡Correcto!' : 'Incorrecto'}
                   </p>
-                  <p className="mt-1 text-sm text-tinta-suave">
+                  {seguro !== null &&
+                    (() => {
+                      const resultado = clasificarRespuesta(acerto, seguro)
+                      const nota = NOTA_RESULTADO[resultado]
+                      // El seguro-pero-equivocado se resalta; el resto es una
+                      // nota sobria bajo el veredicto.
+                      return resultado === 'misinformed' ? (
+                        <p className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
+                          ⚠️ {nota}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm font-medium text-tinta-suave">
+                          {nota}
+                        </p>
+                      )
+                    })()}
+                  <p className="mt-2 text-sm text-tinta-suave">
                     {ejercicio.explicacion}
                   </p>
                   {aviso && (
