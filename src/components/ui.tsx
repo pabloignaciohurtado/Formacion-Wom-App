@@ -1,17 +1,22 @@
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  ReactNode,
+import {
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
 } from 'react'
 import { clasesBoton, type VarianteBoton } from './estilosBoton'
 
-export function Boton({
-  variante = 'primario',
-  className = '',
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: VarianteBoton }) {
-  return <button className={clasesBoton(variante, className)} {...props} />
-}
+// forwardRef: la pantalla de práctica necesita mover el foco de teclado a
+// "Siguiente" al mostrar el feedback (accesibilidad), y para eso hace falta
+// una referencia al <button> real.
+export const Boton = forwardRef<
+  HTMLButtonElement,
+  ButtonHTMLAttributes<HTMLButtonElement> & { variante?: VarianteBoton }
+>(function Boton({ variante = 'primario', className = '', ...props }, ref) {
+  return (
+    <button ref={ref} className={clasesBoton(variante, className)} {...props} />
+  )
+})
 
 export function Campo({
   etiqueta,

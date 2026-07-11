@@ -17,7 +17,7 @@
   --color-magenta-600: #d01560;  /* botón: blanco encima da 5.31:1 (AA) */
   --color-magenta-700: #c2145a;  /* botón hover: 5.93:1 */
 
-  --color-exito: #33cc9e;        /* relleno: chips, flash, confetti */
+  --color-exito: #33cc9e;        /* relleno: chips, confetti */
   --color-exito-texto: #0f7a5a;  /* texto: 5.31:1 sobre blanco (AA) */
   --color-tinta: #212529;
   --color-tinta-suave: #494c66;
@@ -115,34 +115,6 @@ body::after {
 @keyframes wom-flota-c {
   to {
     transform: translate(-70px, 50px) scale(0.9);
-  }
-}
-
-/* Flash sutil de acierto (Práctica) */
-.wom-flash {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(
-    circle at 50% 60%,
-    rgba(51, 204, 158, 0.35),
-    transparent 60%
-  );
-}
-.wom-flash-go {
-  animation: wom-flash 0.6s var(--ease-out);
-}
-@keyframes wom-flash {
-  0% {
-    opacity: 0;
-  }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
   }
 }
 
