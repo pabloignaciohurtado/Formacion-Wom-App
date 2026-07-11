@@ -115,3 +115,23 @@ Se trabajaron **tres dimensiones**; el resto no se mueve.
 - *Analítica de jefaturas (Nivel 1).* Lógica pura en `src/lib/seguimiento.ts` (`diasDesde`, `precisionPct`, `enSegmento`, `contarAtencion`) y `src/lib/csv.ts` (`generarCSV`/`descargarCSV`, RFC 4180 + BOM), ambas con pruebas. `AdminEquipo` suma el bloque de segmentos que filtra la tabla y dos botones de export. Reusa los RPC existentes `resumen_equipo` y `precision_por_dominio`: **sin cambios en la base**. Aplica igual a admin y supervisor.
 
 **Siguientes palancas de mayor retorno** (del plan §7): en lo estratégico, **confianza en el SRS** + **vínculo a KPI** (dims. 2 y 7), que son los que llevarían el promedio por encima de 7.9; y, más barato, la **limpieza de la celebración del acierto** (dim. 1) y el **Nivel 2 de analítica** (rango de fechas + drill al objetivo, dim. 6).
+
+---
+
+## 10. Re-evaluación v3 — 11 de julio de 2026 (ciclo: pantalla núcleo — celebración + accesibilidad)
+
+Se trabajó el bloque **P1 de la pantalla de práctica**: las dos dimensiones que dependían de ella. El resto no se mueve.
+
+| # | Dimensión | v2 | v3 | Qué lo movió |
+|---|---|:---:|:---:|---|
+| 1 | Actividad núcleo y feedback | 7.5 | **8.0** | Se quitan las capas celebratorias redundantes del acierto: fuera el **flash verde a pantalla completa** (tapaba el enunciado) y el **confetti por pregunta**; el acierto se marca con la propia respuesta en verde + check, el "+XP" y la explicación, y el confetti queda para el cierre de sesión. El **enunciado pasa a ser el foco visual** (`text-xl`, por encima del rótulo de dominio): corrige la jerarquía invertida. No llega a 8.5 porque el resto ya era bueno (feedback inmediato, explica el porqué, no auto-avanza) y lo que queda es afinamiento fino. |
+| 8 | Accesibilidad y consistencia de UI | 6.0 | **7.5** | Se cierran las tres brechas que la auditoría nombró en la pantalla núcleo: **`aria-live`** en el feedback (el lector de pantalla anuncia acierto/error + explicación), **foco de teclado** que ya no se pierde (salta a "Siguiente" al responder y al enunciado al avanzar), y **contraste AA** (rojo de error a `red-700`/`red-600`). Alcanza el estándar *en la pantalla núcleo*; una pasada WCAG completa por el resto de las pantallas (orden de foco, etiquetas de formularios, roles) es un esfuerzo aparte y mayor. |
+
+**Promedio: 6.8 → 7.1.** Cruza por primera vez la línea de 7.0 — el objetivo que el plan §7 proyectaba al cerrar los P0 más el bloque P1 del núcleo. De las ocho dimensiones, seis están en 7.5+; las dos que faltan son las estratégicas (SRS con confianza y vínculo a KPI).
+
+**Detalle técnico.**
+
+- *Celebración (dim 1).* En `src/pages/Practica.tsx` se elimina el estado `flash` y su overlay `.wom-flash` (también su CSS en `index.css`) y el confetti dentro de `responder()`. El enunciado sube a `text-xl` y recibe `ref` + `tabIndex={-1}` como ancla de foco. Sin cambios en la base.
+- *Accesibilidad (dim 8).* El panel de feedback es `role="status"` con `aria-live="polite"`. Un `useEffect` por fase mueve el foco a `siguienteRef` (feedback) o `preguntaRef` (pregunta nueva). `Boton` (`src/components/ui.tsx`) pasa a `forwardRef` para poder enfocarlo. Los rojos de error suben a `red-700` (texto) y `red-600` (ícono).
+
+**Siguientes palancas** (del plan §7): quedan las dos estratégicas que cruzarían el promedio por encima del estándar (7.9) — **confianza en el SRS** (dim. 2, el foso) y **vínculo a KPI del rol** (dim. 7, la más baja en 3.0). Esta última necesita una decisión de negocio: qué KPI (AHT, FCR, CSAT, conversión) y de qué fuente entra el dato. También sigue pendiente el **Nivel 2 de analítica** (dim. 6) y una **recompensa canjeable** (dim. 3), ambas con decisiones de producto/datos.
