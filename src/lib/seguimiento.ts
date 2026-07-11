@@ -70,3 +70,59 @@ export function contarAtencion(
       .length,
   }
 }
+
+// ── Nivel 2: rango de fechas y drill al objetivo ────────────────────
+
+export type RangoFechas = '7d' | '30d' | '90d' | 'todo'
+
+export const RANGOS: { id: RangoFechas; etiqueta: string }[] = [
+  { id: '7d', etiqueta: '7 días' },
+  { id: '30d', etiqueta: '30 días' },
+  { id: '90d', etiqueta: '90 días' },
+  { id: 'todo', etiqueta: 'Todo' },
+]
+
+// Fecha ISO desde la que pedir datos, o null para "todo el histórico".
+export function desdeDeRango(
+  rango: RangoFechas,
+  ahora: number = Date.now()
+): string | null {
+  const dias: Record<RangoFechas, number | null> = {
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+    todo: null,
+  }
+  const d = dias[rango]
+  return d === null ? null : new Date(ahora - d * 86400000).toISOString()
+}
+
+export type IntentoObjetivo = { objetivo_id: string; correcto: boolean }
+
+export type PrecisionObjetivo = {
+  objetivo_id: string
+  intentos: number
+  correctas: number
+  precision: number
+}
+
+// Agrupa los intentos de una persona por objetivo y calcula su precisión.
+// Es el drill de Nivel 2: no "falla en Portabilidad" sino "falla en el
+// objetivo Proceso de portabilidad", que es lo accionable en un 1:1.
+export function precisionPorObjetivo(
+  intentos: IntentoObjetivo[]
+): PrecisionObjetivo[] {
+  const mapa = new Map<string, { intentos: number; correctas: number }>()
+  for (const it of intentos) {
+    const cur = mapa.get(it.objetivo_id) ?? { intentos: 0, correctas: 0 }
+    cur.intentos += 1
+    if (it.correcto) cur.correctas += 1
+    mapa.set(it.objetivo_id, cur)
+  }
+  return [...mapa.entries()].map(([objetivo_id, v]) => ({
+    objetivo_id,
+    intentos: v.intentos,
+    correctas: v.correctas,
+    precision: Math.round((100 * v.correctas) / v.intentos),
+  }))
+}
