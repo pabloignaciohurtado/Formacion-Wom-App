@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   contarAtencion,
+  desdeDeRango,
   diasDesde,
   enSegmento,
   precisionPct,
+  precisionPorObjetivo,
   type FilaEquipo,
 } from './seguimiento'
 
@@ -78,5 +80,31 @@ describe('contarAtencion', () => {
       'baja-precision': 1, // solo el de 50%
       obligatorios: 2,
     })
+  })
+})
+
+describe('desdeDeRango', () => {
+  it('resta los días del rango; "todo" no tiene desde', () => {
+    expect(desdeDeRango('7d', AHORA)).toBe(hace(7))
+    expect(desdeDeRango('30d', AHORA)).toBe(hace(30))
+    expect(desdeDeRango('todo', AHORA)).toBeNull()
+  })
+})
+
+describe('precisionPorObjetivo', () => {
+  it('agrupa por objetivo y calcula precisión', () => {
+    const r = precisionPorObjetivo([
+      { objetivo_id: 'a', correcto: true },
+      { objetivo_id: 'a', correcto: false },
+      { objetivo_id: 'b', correcto: true },
+      { objetivo_id: 'b', correcto: true },
+    ])
+    expect(r).toEqual([
+      { objetivo_id: 'a', intentos: 2, correctas: 1, precision: 50 },
+      { objetivo_id: 'b', intentos: 2, correctas: 2, precision: 100 },
+    ])
+  })
+  it('sin intentos devuelve lista vacía', () => {
+    expect(precisionPorObjetivo([])).toEqual([])
   })
 })
