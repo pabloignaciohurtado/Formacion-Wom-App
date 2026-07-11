@@ -102,6 +102,12 @@ por las malas.
   Passwords (Pablo lo tiene pendiente hace varias sesiones).
 - Cambiar la rama por defecto del repo a `main` en GitHub Settings
   (cosmético, ver arriba).
+- **Vínculo formación ↔ KPI del negocio (dim 7 del benchmark, hoy en
+  3.0 — la última palanca estratégica).** Pablo lo pospuso el 11-jul-2026.
+  Bloqueado hasta que defina: (1) qué KPI conectar (AHT, FCR, CSAT,
+  conversión…) y (2) de qué fuente/formato sale el dato (una planilla de
+  ejemplo basta). Con eso se construye. Hay un recordatorio programado
+  para el 20-jul-2026. Contexto: `docs/revision-ux-benchmark.md` §7 y §11.
 
 ## Ideas de continuidad no comprometidas
 
