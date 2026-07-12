@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
-import { buscarDominios } from '../lib/busqueda'
+import { buscarDominios, buscarEjercicios } from '../lib/busqueda'
+import type { Dominio, Ejercicio } from '../data/contenido'
+
+type Entrada =
+  | { tipo: 'dominio'; dominio: Dominio; categoria: string }
+  | { tipo: 'ejercicio'; ejercicio: Ejercicio; dominio: Dominio }
 
 // Buscador global (paleta de comandos) accesible desde el encabezado en
-// cualquier pantalla. Se abre con el disparador, con "/" o con ⌘/Ctrl+K;
-// al elegir un dominio lleva directo a practicarlo.
+// cualquier pantalla. Se abre con el disparador, con "/" o con ⌘/Ctrl+K.
+// Encuentra dominios y ejercicios puntuales; al elegir cualquiera lleva a
+// practicar el dominio correspondiente.
 export function BuscadorGlobal() {
   const [abierto, setAbierto] = useState(false)
   const [q, setQ] = useState('')
@@ -13,7 +19,24 @@ export function BuscadorGlobal() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const resultados = buscarDominios(q).slice(0, 8)
+  const dominios = buscarDominios(q).slice(0, 5)
+  const ejercicios = buscarEjercicios(q).slice(0, 6)
+  const entradas: Entrada[] = [
+    ...dominios.map(
+      (r): Entrada => ({
+        tipo: 'dominio',
+        dominio: r.dominio,
+        categoria: r.categoria,
+      })
+    ),
+    ...ejercicios.map(
+      (r): Entrada => ({
+        tipo: 'ejercicio',
+        ejercicio: r.ejercicio,
+        dominio: r.dominio,
+      })
+    ),
+  ]
 
   // Atajos de teclado: "/" o ⌘/Ctrl+K abren; Escape cierra.
   useEffect(() => {
@@ -60,13 +83,13 @@ export function BuscadorGlobal() {
   const alTeclearInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSel((s) => Math.min(s + 1, resultados.length - 1))
+      setSel((s) => Math.min(s + 1, entradas.length - 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setSel((s) => Math.max(s - 1, 0))
-    } else if (e.key === 'Enter' && resultados[sel]) {
+    } else if (e.key === 'Enter' && entradas[sel]) {
       e.preventDefault()
-      ir(resultados[sel].dominio.id)
+      ir(entradas[sel].dominio.id)
     }
   }
 
@@ -114,7 +137,7 @@ export function BuscadorGlobal() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={alTeclearInput}
-                placeholder="Buscar un dominio o tema (roaming, eSIM, Club WOM…)"
+                placeholder="Buscar un dominio o tema (roaming, eSIM, VoLTE…)"
                 aria-label="Buscar dominios o temas"
                 className="w-full bg-transparent py-4 text-base outline-none placeholder:text-tinta-suave/70"
               />
@@ -127,45 +150,76 @@ export function BuscadorGlobal() {
                 <X className="size-4" />
               </button>
             </div>
-            <div className="max-h-[50vh] overflow-y-auto p-2">
+            <div className="max-h-[55vh] overflow-y-auto p-2">
               {q.trim() === '' ? (
                 <p className="px-3 py-6 text-center text-sm text-tinta-suave">
-                  Escribe para buscar entre los dominios de formación.
+                  Escribe para buscar entre dominios y ejercicios.
                 </p>
-              ) : resultados.length === 0 ? (
+              ) : entradas.length === 0 ? (
                 <p className="px-3 py-6 text-center text-sm text-tinta-suave">
                   Sin resultados para “{q.trim()}”.
                 </p>
               ) : (
                 <ul>
-                  {resultados.map((r, i) => (
-                    <li key={r.dominio.id}>
-                      <button
-                        type="button"
-                        onClick={() => ir(r.dominio.id)}
-                        onMouseEnter={() => setSel(i)}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                          i === sel ? 'bg-wom-50' : 'hover:bg-niebla'
-                        }`}
-                      >
-                        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-wom-600 to-magenta-500 text-lg">
-                          {r.dominio.icono}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">
-                            {r.dominio.titulo}
-                          </span>
-                          <span className="block truncate text-xs text-tinta-suave">
-                            {r.categoria} · {r.dominio.ejercicios.length}{' '}
-                            ejercicios
-                          </span>
-                        </span>
-                        <span className="shrink-0 text-xs font-semibold text-wom-600">
-                          Practicar
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {entradas.map((e, i) => {
+                    const encabezado =
+                      i === 0 || entradas[i - 1].tipo !== e.tipo ? (
+                        <li
+                          className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-tinta-suave/70"
+                          aria-hidden="true"
+                        >
+                          {e.tipo === 'dominio' ? 'Dominios' : 'Ejercicios'}
+                        </li>
+                      ) : null
+                    const clave =
+                      e.tipo === 'dominio'
+                        ? `d-${e.dominio.id}`
+                        : `e-${e.dominio.id}-${e.ejercicio.id}`
+                    return (
+                      <Fragment key={clave}>
+                        {encabezado}
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => ir(e.dominio.id)}
+                            onMouseEnter={() => setSel(i)}
+                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                              i === sel ? 'bg-wom-50' : 'hover:bg-niebla'
+                            }`}
+                          >
+                            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-wom-600 to-magenta-500 text-lg">
+                              {e.dominio.icono}
+                            </span>
+                            {e.tipo === 'dominio' ? (
+                              <>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate font-semibold">
+                                    {e.dominio.titulo}
+                                  </span>
+                                  <span className="block truncate text-xs text-tinta-suave">
+                                    {e.categoria} ·{' '}
+                                    {e.dominio.ejercicios.length} ejercicios
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-xs font-semibold text-wom-600">
+                                  Practicar
+                                </span>
+                              </>
+                            ) : (
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm">
+                                  {e.ejercicio.enunciado}
+                                </span>
+                                <span className="block truncate text-xs text-tinta-suave">
+                                  en {e.dominio.titulo}
+                                </span>
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      </Fragment>
+                    )
+                  })}
                 </ul>
               )}
             </div>
