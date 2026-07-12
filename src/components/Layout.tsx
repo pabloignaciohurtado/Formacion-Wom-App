@@ -20,6 +20,7 @@ import { MarcaWom } from './MarcaWom'
 import { EstadoCarga } from './ui'
 import { ErrorBoundary } from './ErrorBoundary'
 import { EstadoConexion } from './EstadoConexion'
+import { BuscadorGlobal } from './BuscadorGlobal'
 
 const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
@@ -126,6 +127,7 @@ export function Layout() {
         <div className="hidden lg:block text-sm text-tinta-suave">
           Plataforma de formación interna
         </div>
+        <BuscadorGlobal />
         <div className="flex items-center gap-3">
           <EstadoConexion />
           <button
