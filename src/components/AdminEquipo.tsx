@@ -1,13 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ChevronDown,
-  ChevronRight,
-  Download,
-  FileText,
-  Table2,
-  Zap,
-} from 'lucide-react'
+import { ChevronRight, Download, FileText, Table2, Zap } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { DOMINIOS } from '../data/contenido'
 import { ligaDe } from '../lib/gamificacion'
@@ -34,6 +27,7 @@ import {
   type FilaDificil,
   type FilaTendencia,
 } from '../lib/reportes'
+import { MenuExportar } from './MenuExportar'
 import { EstadoCarga, Tarjeta } from './ui'
 
 // Puente temporal: los RPC de Nivel 2 (resumen_equipo/precision_por_dominio
@@ -116,112 +110,7 @@ const SEGMENTOS: { id: Segmento; etiqueta: (n: number) => string; clase: string 
   },
 ]
 
-// Menú de exportación: un solo disparador que ofrece el reporte completo en
-// PDF (para compartir/imprimir) o Excel (para cruces propios), más el CSV de
-// la tabla visible. Se cierra al hacer clic fuera o con Escape.
 type FormatoGenerando = null | 'excel' | 'pdf'
-
-function MenuExportar({
-  etiquetaCSV,
-  generando,
-  onPDF,
-  onExcel,
-  onCSV,
-}: {
-  etiquetaCSV: string
-  generando: FormatoGenerando
-  onPDF: () => void
-  onExcel: () => void
-  onCSV: () => void
-}) {
-  const [abierto, setAbierto] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!abierto) return
-    const fuera = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setAbierto(false)
-      }
-    }
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAbierto(false)
-    }
-    document.addEventListener('mousedown', fuera)
-    document.addEventListener('keydown', esc)
-    return () => {
-      document.removeEventListener('mousedown', fuera)
-      document.removeEventListener('keydown', esc)
-    }
-  }, [abierto])
-
-  const opcion = (
-    Icono: typeof FileText,
-    etiqueta: string,
-    detalle: string,
-    onClick: () => void,
-    cargando: boolean
-  ) => (
-    <button
-      type="button"
-      role="menuitem"
-      disabled={generando !== null}
-      onClick={() => {
-        setAbierto(false)
-        onClick()
-      }}
-      className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-niebla disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      <Icono className="mt-0.5 size-4 shrink-0 text-wom-600" />
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold">
-          {etiqueta}
-          {cargando ? ' · generando…' : ''}
-        </span>
-        <span className="block text-xs text-tinta-suave">{detalle}</span>
-      </span>
-    </button>
-  )
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={abierto}
-        disabled={generando !== null}
-        onClick={() => setAbierto((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600 disabled:opacity-60"
-      >
-        <Download className="size-4" />
-        {generando ? 'Generando…' : 'Exportar'}
-        <ChevronDown className="size-3.5" />
-      </button>
-      {abierto && (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-        >
-          {opcion(
-            FileText,
-            'Reporte PDF',
-            'Branded, listo para compartir o imprimir',
-            onPDF,
-            generando === 'pdf'
-          )}
-          {opcion(
-            Table2,
-            'Excel (.xlsx)',
-            'Libro con seguimiento, tendencia y difíciles',
-            onExcel,
-            generando === 'excel'
-          )}
-          {opcion(Download, etiquetaCSV, 'Tabla visible en CSV', onCSV, false)}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // `conFicha` controla la columna de la ficha individual: el admin la tiene;
 // un supervisor no, porque esa ruta y sus consultas son de admin.
@@ -352,11 +241,29 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
           </div>
           {equipo && equipo.length > 0 && (
             <MenuExportar
-              etiquetaCSV={`CSV de la tabla${filtro ? ' (filtro)' : ''}`}
-              generando={generando}
-              onPDF={exportarPDF}
-              onExcel={exportarExcel}
-              onCSV={exportarCSV}
+              ocupado={generando !== null}
+              opciones={[
+                {
+                  icono: FileText,
+                  etiqueta: 'Reporte PDF',
+                  detalle: 'Branded, listo para compartir o imprimir',
+                  onClick: exportarPDF,
+                  cargando: generando === 'pdf',
+                },
+                {
+                  icono: Table2,
+                  etiqueta: 'Excel (.xlsx)',
+                  detalle: 'Libro con seguimiento, tendencia y difíciles',
+                  onClick: exportarExcel,
+                  cargando: generando === 'excel',
+                },
+                {
+                  icono: Download,
+                  etiqueta: `CSV de la tabla${filtro ? ' (filtro)' : ''}`,
+                  detalle: 'Tabla visible en CSV',
+                  onClick: exportarCSV,
+                },
+              ]}
             />
           )}
         </div>
