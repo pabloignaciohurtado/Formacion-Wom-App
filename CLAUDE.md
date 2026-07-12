@@ -33,8 +33,11 @@ por las malas.
   equivocado*), **analítica de jefaturas Nivel 1 y 2** (qué atender, export
   CSV, rango de fechas, tendencia, drill al objetivo), **dominio Club WOM**
   (13 dominios; + `contenido.test.ts` de integridad), **Ejercicios en grilla
-  de bloques**, y **buscador global** (paleta ⌘K en el header:
-  `BuscadorGlobal.tsx` + `lib/busqueda.ts`, encuentra dominios y ejercicios).
+  de bloques**, **buscador global** (paleta ⌘K en el header:
+  `BuscadorGlobal.tsx` + `lib/busqueda.ts`, encuentra dominios y ejercicios),
+  y **export del reporte de equipo a PDF/Excel** (menú "Exportar" en
+  `AdminEquipo.tsx` + `lib/reportes.ts`; jspdf y write-excel-file en carga
+  diferida, fuera del bundle inicial).
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
   scorecard en `design/scorecard-dimensiones.html`).
 
@@ -126,6 +129,19 @@ por las malas.
 - **`pkill -f "vite preview"` combinado con `&` o más comandos en una misma
   llamada Bash da exit 144** y corta el resto — correr el kill solo, en su
   propia llamada, o simplemente lanzar el preview en otro puerto.
+- **Cambios de dependencias → los workflows usan `npm install`, no `npm ci`.**
+  El proxy no deja pushear por MCP el `package-lock.json` regenerado (~268 KB;
+  `push_files` inline se trunca), así que el lock queda detrás de
+  `package.json`. `npm install` reconcilia y compila; `npm ci` fallaría. Para
+  el push de un cambio con deps: NO incluir el lock (dejarlo como en `main`) y
+  editar `ci.yml`/`deploy-pages.yml` a `npm install`. Volver a `npm ci` estricto
+  requiere commitear el lock desde un entorno con push directo (esta sesión no
+  lo tiene: `GH_TOKEN` del entorno no sirve para git, y `git push` pide auth).
+- **jspdf + write-excel-file se cargan con `import()` diferido** dentro de
+  `lib/reportes.ts` para no engordar el bundle inicial; se testea el export de
+  verdad con Playwright (descarga real del PDF/xlsx y validación de cabeceras).
+  El glifo `≥` no existe en las fuentes estándar de jsPDF (WinAnsi) — usar
+  ASCII (ej. "7+ días") en el texto del PDF.
 
 ## Pendientes de decisión humana (no técnicos)
 
@@ -146,4 +162,5 @@ Si Pablo pide seguir: que el buscador global guarde búsquedas/dominios
 recientes (ofrecido, no comprometido), push notifications reales, generación
 de preguntas asistida por IA desde el panel admin (hoy se agregan preguntas al
 catálogo manualmente cuando él pasa material de referencia), exportar reportes
-de equipo a PDF/Excel. Ver §16 de `DOCUMENTACION.md`.
+de equipo a PDF a nivel individual (ficha del relator). Ver §16 de
+`DOCUMENTACION.md`.
