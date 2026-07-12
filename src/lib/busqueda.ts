@@ -1,4 +1,9 @@
-import { CATEGORIAS, DOMINIOS, type Dominio } from '../data/contenido'
+import {
+  CATEGORIAS,
+  DOMINIOS,
+  type Dominio,
+  type Ejercicio,
+} from '../data/contenido'
 
 // Normaliza (minúsculas, sin acentos) para que "esim" encuentre "eSIM" y
 // "gestion" encuentre "gestión".
@@ -42,5 +47,29 @@ export function buscarDominios(consulta: string): ResultadoDominio[] {
   return INDICE.filter((x) => x.texto.includes(q)).map((x) => ({
     dominio: x.dominio,
     categoria: x.categoria,
+  }))
+}
+
+// Índice de ejercicios: cada enunciado con su dominio, para poder encontrar
+// un ejercicio puntual (p. ej. "VoLTE") y saber en qué dominio está.
+const INDICE_EJERCICIOS = DOMINIOS.flatMap((d) =>
+  d.ejercicios.map((e) => ({
+    ejercicio: e,
+    dominio: d,
+    texto: normalizar(e.enunciado),
+  }))
+)
+
+export interface ResultadoEjercicio {
+  ejercicio: Ejercicio
+  dominio: Dominio
+}
+
+export function buscarEjercicios(consulta: string): ResultadoEjercicio[] {
+  const q = normalizar(consulta.trim())
+  if (!q) return []
+  return INDICE_EJERCICIOS.filter((x) => x.texto.includes(q)).map((x) => ({
+    ejercicio: x.ejercicio,
+    dominio: x.dominio,
   }))
 }
