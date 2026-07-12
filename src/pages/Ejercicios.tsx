@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, ChevronRight } from 'lucide-react'
+import { Award, ChevronRight, Search, X } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -11,6 +11,28 @@ import { Esqueleto, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Meta = Tables<'goals'>
+
+// Búsqueda: normaliza (minúsculas, sin acentos) para que "esim" encuentre
+// "eSIM" y "gestion" encuentre "gestión". El índice se arma una sola vez con
+// el catálogo (título, descripción, objetivos y enunciados de cada dominio).
+function normalizar(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+}
+
+const INDICE_BUSQUEDA = DOMINIOS.map((d) => ({
+  id: d.id,
+  texto: normalizar(
+    [
+      d.titulo,
+      d.descripcion,
+      ...d.objetivos.map((o) => o.titulo),
+      ...d.ejercicios.map((e) => e.enunciado),
+    ].join(' ')
+  ),
+}))
 
 interface EstadoDominio {
   maestria: number
@@ -97,6 +119,7 @@ export default function Ejercicios() {
     null
   )
   const [activa, setActiva] = useState<string>(CATEGORIAS[0].id)
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -152,6 +175,19 @@ export default function Ejercicios() {
     .map((id) => DOMINIOS.find((d) => d.id === id))
     .filter((d): d is Dominio => Boolean(d))
 
+  const consulta = normalizar(busqueda.trim())
+  const buscando = consulta.length > 0
+  const idsResultado = buscando
+    ? new Set(
+        INDICE_BUSQUEDA.filter((x) => x.texto.includes(consulta)).map(
+          (x) => x.id
+        )
+      )
+    : null
+  const dominiosResultado = idsResultado
+    ? DOMINIOS.filter((d) => idsResultado.has(d.id))
+    : []
+
   return (
     <section>
       <h1 className="text-2xl font-extrabold lg:text-3xl">Ejercicios</h1>
@@ -159,6 +195,29 @@ export default function Ejercicios() {
         Practica por dominio: acertar espacia el repaso, fallar lo trae de
         vuelta.
       </p>
+
+      {/* Buscador: filtra dominios por título, tema o contenido */}
+      <div className="relative mt-5">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-tinta-suave" />
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar un dominio o tema (roaming, eSIM, Club WOM…)"
+          aria-label="Buscar dominios o temas"
+          className="w-full rounded-2xl bg-white py-3 pl-11 pr-11 shadow-sm outline-none ring-1 ring-black/5 placeholder:text-tinta-suave/70 focus:ring-2 focus:ring-wom-600 dark:ring-white/10 [&::-webkit-search-cancel-button]:hidden"
+        />
+        {busqueda && (
+          <button
+            type="button"
+            onClick={() => setBusqueda('')}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-niebla"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
 
       {!estados ? (
         <>
@@ -173,6 +232,35 @@ export default function Ejercicios() {
             ))}
           </div>
         </>
+      ) : buscando ? (
+        <div className="mt-5">
+          <p className="mb-3 text-sm text-tinta-suave">
+            {dominiosResultado.length === 0
+              ? 'Sin resultados'
+              : `${dominiosResultado.length} ${
+                  dominiosResultado.length === 1 ? 'dominio' : 'dominios'
+                }`}{' '}
+            para “{busqueda.trim()}”
+          </p>
+          {dominiosResultado.length === 0 ? (
+            <Tarjeta className="text-center text-tinta-suave">
+              No encontramos dominios con ese término. Prueba con otra palabra
+              (por ejemplo: portabilidad, fibra, beneficios).
+            </Tarjeta>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {dominiosResultado.map((dominio, i) => (
+                <TarjetaDominio
+                  key={dominio.id}
+                  dominio={dominio}
+                  estado={estados[dominio.id]}
+                  indice={i}
+                  nombrePerfil={perfil?.nombre ?? ''}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {/* Bloques de categoría: se elige uno y sus dominios aparecen abajo */}
