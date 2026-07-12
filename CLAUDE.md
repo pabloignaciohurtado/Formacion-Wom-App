@@ -35,9 +35,11 @@ por las malas.
   (13 dominios; + `contenido.test.ts` de integridad), **Ejercicios en grilla
   de bloques**, **buscador global** (paleta ⌘K en el header:
   `BuscadorGlobal.tsx` + `lib/busqueda.ts`, encuentra dominios y ejercicios),
-  y **export del reporte de equipo a PDF/Excel** (menú "Exportar" en
-  `AdminEquipo.tsx` + `lib/reportes.ts`; jspdf y write-excel-file en carga
-  diferida, fuera del bundle inicial).
+  **export del reporte de equipo y de la ficha del relator a PDF/Excel**
+  (menú "Exportar" reutilizable `components/MenuExportar.tsx` + `lib/reportes.ts`;
+  jspdf y write-excel-file en carga diferida, fuera del bundle inicial), y una
+  **auditoría de integridad + respaldo automático del log de acciones**
+  (ver sección "Respaldo" más abajo y `design/auditoria-bd-acciones.md`).
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
   scorecard en `design/scorecard-dimensiones.html`).
 
@@ -73,6 +75,31 @@ por las malas.
   primero si el proceso interno "pages build and deployment" (visible en
   Actions) ya terminó.
 - Comunicación con el usuario, commits, PRs: todo en **español**.
+
+## Respaldo y recuperabilidad del log de acciones
+
+- **El rastro de acciones es impecable e inmutable.** Auditoría del 2026-07-12
+  (`design/auditoria-bd-acciones.md`): 0 nulos/huérfanos/duplicados, integridad
+  referencial 1:1 con `auth.users`. Las tablas de registro (`attempts`,
+  `activity_events`, `insignias_usuario`, `consultas`) **no tienen política
+  RLS de DELETE ni UPDATE** → son solo-anexado; nadie las puede borrar/editar
+  desde la API. `attempts` es la fuente de verdad de las acciones.
+- **Riesgo cubierto:** todas las FK son `ON DELETE CASCADE` hacia el usuario
+  (`auth.users → profiles → attempts/…`). La app nunca borra usuarios (baja
+  lógica `activo=false`), pero un borrado manual del usuario arrastraría su
+  historial, y el plan Supabase no tiene backups automáticos/PITR.
+- **Respaldo automático semanal** (tarea programada, lunes 09:00 UTC): exporta
+  todas las tablas a un `.zip` (CSV por tabla + `MANIFIESTO.txt`) y lo entrega
+  por chat/correo **y lo sube a Google Drive**, carpeta del proyecto
+  "Formación WOM - Respaldos de acciones" (id
+  `1QAubda3rlaEgCCu94s9lqejDTvWnEO_T`). Es copia inmutable fuera de la base.
+  Para correrlo a demanda: pedir "genera el respaldo del log de acciones ahora".
+- **Export manual del respaldo** (lo que hace la tarea): `execute_sql` con un
+  `json_build_object(...)::text` de todas las tablas → el output grande se
+  guarda en un `.txt` que es JSON `{"result":"…"}`; parsear con `json.load`,
+  tomar `['result']`, extraer con regex el array `[{"respaldo": "<json>"}]` y
+  hacer doble `json.loads` (el `::text` lo deja doble-codificado). Luego CSV
+  por tabla + zip.
 
 ## Restricciones de la sesión (no son bugs, son la plataforma)
 
@@ -142,6 +169,21 @@ por las malas.
   verdad con Playwright (descarga real del PDF/xlsx y validación de cabeceras).
   El glifo `≥` no existe en las fuentes estándar de jsPDF (WinAnsi) — usar
   ASCII (ej. "7+ días") en el texto del PDF.
+- **Subir un binario a Google Drive** con `mcp__Google_Drive__create_file`:
+  `base64Content` (genéralo con `base64 -w0`) + `contentMimeType: application/zip`
+  + `disableConversionToGoogleType: true` + `parentId` de la carpeta. El
+  `fileSize` que devuelve al crear puede venir engañoso (reportó 10 KB para un
+  zip de 14 KB); verificar de verdad con `download_file_content` y probar el
+  archivo (el zip trae su EOCD `PK\x05\x06` al final si está completo). Para
+  pegar el base64 en el tool-call, que quepa bajo el cap de lectura (~22 KB):
+  mantener el zip liviano (solo CSV, sin el JSON gigante) o dividirlo.
+- **Errores transitorios de MCP** `Tool permission stream closed before
+  response received`: son intermitentes (a Google Drive le pasó 2 veces
+  seguidas y funcionó al reintentar). Reintentar la MISMA llamada, no cambiar
+  de enfoque.
+- **Salida grande de `execute_sql`** se guarda a un `.txt` en `tool-results/`
+  en vez de mostrarse; procesarla con Python (`json.load` del archivo → `['result']`
+  → regex del array → doble `json.loads`), no pegarla al contexto.
 
 ## Pendientes de decisión humana (no técnicos)
 
@@ -162,5 +204,6 @@ Si Pablo pide seguir: que el buscador global guarde búsquedas/dominios
 recientes (ofrecido, no comprometido), push notifications reales, generación
 de preguntas asistida por IA desde el panel admin (hoy se agregan preguntas al
 catálogo manualmente cuando él pasa material de referencia), exportar reportes
-de equipo a PDF a nivel individual (ficha del relator). Ver §16 de
-`DOCUMENTACION.md`.
+también a nivel de división/equipo agregado, o replicar el respaldo en otro
+destino (OneDrive lo evaluó y decidió dejarlo solo en Google Drive). Ver §16
+de `DOCUMENTACION.md`.
