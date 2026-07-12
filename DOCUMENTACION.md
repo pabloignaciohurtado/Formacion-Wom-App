@@ -7,7 +7,7 @@ de administración con analítica por persona y por contenido.
 
 - **En producción:** https://pabloignaciohurtado.github.io/Formacion-Wom-App/
 - **Repositorio:** `pabloignaciohurtado/Formacion-Wom-App` (GitHub)
-- **Estado:** 19 PRs merged, en operación con datos reales
+- **Estado:** en producción con datos reales (detalle en §16)
 
 ---
 
@@ -115,7 +115,7 @@ ciclo de carga.
 ## 4. Modelo de datos (Supabase / Postgres)
 
 Proyecto Supabase: `formacion-wom` (`jgtrfrfolcfpvzbsiuka`). **RLS activo en
-todas las tablas.** 7 migraciones aplicadas, en orden:
+todas las tablas.** 10 migraciones aplicadas, en orden:
 
 1. `endurecer_funciones_security_definer`
 2. `proteger_campos_administrativos_perfil`
@@ -124,13 +124,21 @@ todas las tablas.** 7 migraciones aplicadas, en orden:
 5. `insignias_usuario`
 6. `ligas_semanales`
 7. `analytics_admin`
+8. `ligas_por_division_y_autocompetencia` — ranking por división y auto-competencia
+9. `intentos_con_confianza` — columna `attempts.confianza` (SRS basado en confianza)
+10. `analitica_jefaturas_nivel2` — rango de fechas + tendencia del equipo
+
+> Cada migración con cambio de datos/RLS tiene su `.sql` de rollback en
+> `docs/` y se verificó E2E contra la base (transacción con rollback o
+> usuario de prueba que se elimina al terminar), revisando siempre
+> `get_advisors(type: security)` después.
 
 ### 4.1 Tablas
 
 | Tabla | Rol | Notas |
 |---|---|---|
 | `profiles` | Perfil por usuario | `role` (relator/admin), `activo`, `liga`; **fila creada únicamente por trigger**, nunca por el cliente |
-| `attempts` | Cada respuesta a un ejercicio | `correcto`, `puntaje`, `domain_id`, `objetivo_id`, `fecha` — es la fuente de verdad del XP y las métricas |
+| `attempts` | Cada respuesta a un ejercicio | `correcto`, `puntaje`, `domain_id`, `objetivo_id`, `fecha`, **`confianza`** (bool, nullable — "¿estabas seguro/a?"; los intentos previos a la migración quedan en `null`) — es la fuente de verdad del XP y las métricas |
 | `srs_cards` | Estado de repaso espaciado | PK compuesta `(user_id, exercise_id)`; `caja` (1–5), `proximo_repaso` |
 | `goals` | Metas de maestría por dominio | Asignadas por un admin, PK `id` = `"{user_id}-{domain_id}"` |
 | `consultas` | Preguntas de relatores | `estado` (pendiente/respondida), `respuesta_admin` |
@@ -153,8 +161,11 @@ Todas con `search_path` fijo (`public`) para evitar *search_path hijacking*.
 | `ranking_semanal()` | `SECURITY DEFINER`, solo `authenticated` | XP de la semana en curso por usuario activo, con posición; expone solo `nombre` + `liga` + `xp`, **nunca email** |
 | `heroes_semana()` | `SECURITY DEFINER`, solo `authenticated` | Top 3 de XP de la semana pasada completa |
 | `asegurar_corte_semanal()` | `SECURITY DEFINER`, solo `authenticated` | Procesa ascensos/descensos de liga una vez por semana (idempotente vía `cortes_semanales`) |
-| `resumen_equipo()` | `SECURITY DEFINER`, guard `is_admin()` en el `WHERE` | Ficha resumida de cada relator activo: XP, precisión, última actividad, obligatorias pendientes |
-| `precision_por_dominio()` | `SECURITY DEFINER`, guard `is_admin()` | Precisión agregada del equipo por dominio (≥5 intentos) — detecta contenido difícil |
+| `ranking_division()` | `SECURITY DEFINER`, solo `authenticated` | Ranking de la semana **acotado al tier/división del que llama** (no global) — arregla el anti-patrón de competir contra todos |
+| `mi_progreso_semanal()` | `SECURITY INVOKER` | Auto-competencia: XP de la semana en curso vs. la semana anterior al mismo punto |
+| `resumen_equipo(desde, hasta)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Ficha resumida de cada relator (supervisor: solo su equipo): XP, precisión, última actividad, obligatorias pendientes. Params `desde`/`hasta` opcionales (null = todo) para acotar el período |
+| `precision_por_dominio(desde, hasta)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Precisión agregada del equipo por dominio (≥5 intentos) — detecta contenido difícil. Acepta el mismo rango de fechas opcional |
+| `tendencia_equipo(semanas)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Serie temporal (volumen + precisión) de las últimas N semanas del equipo — responde "¿mejora o empeora?" |
 
 ### 4.3 Políticas RLS (resumen)
 
@@ -204,26 +215,45 @@ autocompletada y validada en tiempo de compilación.
 ### 6.1 Contenido
 
 `src/data/contenido.ts` — catálogo estático versionado en git, no en base
-de datos. **12 dominios**, agrupados en **3 categorías** (`CATEGORIAS`):
+de datos. **13 dominios**, agrupados en **3 categorías** (`CATEGORIAS`):
 
 - 🛒 **Productos y Servicios**: Portabilidad, Planes, Prepago, Equipos,
-  Boleta y Pagos, Servicios Adicionales
+  Boleta y Pagos, Servicios Adicionales, **Club WOM (Beneficios)**
 - 🔧 **Técnico y Conectividad**: Internet Fibra, Internet Móvil, Roaming,
   Servicio Técnico
 - 🎯 **Habilidades**: Atención al Cliente, Técnicas de Formación
 
-Cada dominio tiene 2 objetivos y ~10 ejercicios de alternativas con
-explicación pedagógica (≈112 preguntas en total). Los `id` de dominio y
-ejercicio son **estables** (`po-01`, `atencion-cliente`, etc.): son la
-clave foránea lógica que usan `attempts` y `srs_cards`, así que renombrar
-o borrar un ejercicio existente rompe el historial de quienes ya lo
-respondieron. Agregar contenido nuevo es seguro y no requiere migración.
+Cada dominio tiene 2–4 objetivos y ~10 ejercicios de alternativas con
+explicación pedagógica (≈130 preguntas en total). Los `id` de dominio y
+ejercicio son **estables** (`po-01`, `atencion-cliente`, `cw-01`, etc.):
+son la clave foránea lógica que usan `attempts` y `srs_cards`, así que
+renombrar o borrar un ejercicio existente rompe el historial de quienes ya
+lo respondieron. Agregar contenido nuevo es seguro y no requiere migración.
+
+**Club WOM (Beneficios)** se diseñó separando lo *durable* (elegibilidad,
+proceso de canje, reglas de uso — apto para repaso espaciado y confianza)
+de lo *volátil* (qué comercio/descuento hoy — se consulta en la app, no se
+memoriza, porque caduca). El análisis metodológico está en
+`design/metodologia-beneficios.md`.
+
+`src/data/contenido.test.ts` es un **test de integridad del catálogo**
+(vitest): valida que las categorías referencien dominios reales, ids
+únicos, cada `objetivoId` exista en su dominio, `correcta` dentro de rango
+y explicación no vacía. Barato de mantener, atrapa errores de autoría
+antes de producción. Corre en CI junto al resto (`npx vitest run`).
 
 ### 6.2 Algoritmo Leitner (`src/lib/srs.ts`)
 
 - 5 cajas; intervalo hasta el próximo repaso: **1, 2, 4, 8, 16 días**
   (`DIAS_POR_CAJA`).
-- Acierto → sube una caja (tope caja 5). Fallo → vuelve a caja 1.
+- **Aprendizaje basado en confianza** (`siguienteCaja(caja, correcto, seguro?)`):
+  acierto **seguro** sube de caja; acierto **con dudas** se queda (conocimiento
+  frágil); error vuelve a caja 1. El 3er argumento es opcional → compatibilidad
+  con intentos previos sin `confianza`.
+- `clasificarRespuesta(correcto, seguro)` devuelve el cuadrante del 2×2
+  **dominado / frágil / brecha / *misinformed***. El caso *misinformed*
+  (**seguro pero equivocado**) es el más caro en atención al cliente —el
+  relator daría mal la información sin dudar— y el feedback lo resalta.
 - **Maestría de un dominio** = promedio del avance de caja de sus
   ejercicios (`(caja-1)/(CAJA_MAXIMA-1)`, ejercicios sin tarjeta cuentan 0).
   Al llegar a 100% se puede descargar un certificado del dominio.
@@ -239,12 +269,21 @@ respondieron. Agregar contenido nuevo es seguro y no requiere migración.
    las opciones en orden distinto, y la misma persona las ve reordenadas
    cada vez que repasa. La posición de la respuesta correcta también
    varía en los datos fuente (no siempre la misma posición).
-3. Al responder: feedback inmediato (check verde / shake en la incorrecta,
-   explicación), se calcula la nueva caja, y se registran en paralelo un
-   `insert` en `attempts` y un `upsert` en `srs_cards`.
-4. **XP en vivo**: +25 por acierto, +5 por intento fallido (constantes en
+3. **Paso de confianza**: entre elegir la alternativa y revelar el
+   resultado, el relator marca "¿qué tan seguro/a estás?" (un toque). Esa
+   señal alimenta el SRS (§6.2) y detecta al *seguro-pero-equivocado*.
+4. Al responder: feedback inmediato (la respuesta correcta en verde + check,
+   explicación del porqué), se calcula la nueva caja y se registran en
+   paralelo un `insert` en `attempts` (con `confianza`) y un `upsert` en
+   `srs_cards`. El feedback nombra el cuadrante del 2×2, resaltando el
+   *misinformed*. Se limpió la celebración redundante del acierto (fuera el
+   flash a pantalla completa y el confetti por pregunta; el enunciado es el
+   foco visual), y es **accesible**: `role="status"` + `aria-live` anuncian
+   acierto/error, el foco de teclado salta a "Siguiente" y los rojos pasan
+   el contraste AA.
+5. **XP en vivo**: +25 por acierto, +5 por intento fallido (constantes en
    `src/lib/gamificacion.ts`), con chip flotante animado.
-5. Al terminar la cola: pantalla de resumen con confetti (colores WOM),
+6. Al terminar la cola: pantalla de resumen con confetti (colores WOM),
    contador animado de aciertos y XP ganado.
 
 ### 6.4 Modo offline (`src/lib/colaOffline.ts`)
@@ -342,13 +381,22 @@ firmas, hitos) con seguimiento de cumplimiento.
 
 1. **Relatores**: tabla con activar/desactivar (registra `alta_por`,
    `alta_fecha`/`baja_fecha`), badge de rol y punto de estado.
-2. **`AdminEquipo`** (analítica, §4.2 `resumen_equipo`/`precision_por_dominio`):
+2. **`AdminEquipo`** (analítica, §4.2 `resumen_equipo`/`precision_por_dominio`/`tendencia_equipo`):
+   - **Qué atender esta semana** (Nivel 1): tres segmentos accionables
+     —inactivos ≥7 días, precisión <70%, obligatorias pendientes—, cada uno
+     un chip que **filtra** la tabla a su gente; estado positivo cuando no
+     hay nadie.
    - Tabla de seguimiento por persona: liga, XP, precisión, **última
      práctica con semáforo** (rojo si ≥7 días sin actividad o nunca
-     practicó — los que necesitan un empujón saltan a la vista), estado
-     de obligatorias, enlace a su ficha individual.
+     practicó), estado de obligatorias, enlace a su ficha individual.
    - **Contenido difícil**: dominios con precisión de equipo <70%,
      candidatos a reforzar en sesión presencial o a revisar sus preguntas.
+   - **Export CSV** del seguimiento (respeta el filtro activo) y del
+     contenido difícil, para cruces propios de la jefatura.
+   - **Nivel 2**: **rango de fechas** (7/30/90 días · todo) que acota el
+     seguimiento y el contenido difícil al período, y **gráfico de tendencia
+     del equipo** (8 semanas: barra = volumen, % = precisión) que responde
+     "¿mejora o empeora?".
 3. **`AdminActividades`** (§8) y **Consultas** (responder preguntas de
    relatores, marca `estado='respondida'`).
 
@@ -358,7 +406,10 @@ firmas, hitos) con seguimiento de cumplimiento.
 - 3 métricas (XP, ejercicios, precisión) de las últimas 8 semanas.
 - **Gráfico de evolución semanal de XP**: barras SVG dibujadas a mano
   (sin librería de gráficos) agrupando `attempts` por semana ISO.
-- Maestría por cada uno de los 12 dominios (barras de progreso).
+- **Objetivos a reforzar** (drill del Nivel 2): objetivos donde el relator
+  falla *puntualmente* (precisión <70% con ≥3 intentos) —no "en Portabilidad"
+  sino "en el objetivo Proceso y requisitos"—, lo concreto para un 1:1.
+- Maestría por cada uno de los 13 dominios (barras de progreso).
 - **Asignación de metas** desde la UI: elegir dominio + % objetivo →
   `upsert` en `goals`; se muestra meta vs. avance real con semáforo de
   cumplimiento.
@@ -394,6 +445,13 @@ pantallas para consistencia visual.
   tema.
 - **Móvil**: bottom navigation bar (sensación de app nativa) + header
   compacto.
+- **Buscador global** (`src/components/BuscadorGlobal.tsx`): paleta de
+  comandos (estilo ⌘K) montada en el header, accesible desde cualquier
+  pantalla. Disparador en el header (pill en escritorio, ícono en móvil);
+  se abre con `/` o ⌘/Ctrl+K, se navega con flechas + Enter, cierra con
+  Escape. Encuentra **dominios y ejercicios puntuales** (secciones separadas,
+  sin acentos ni mayúsculas; lógica en `src/lib/busqueda.ts`) y al elegir
+  cualquiera lleva a practicar el dominio (`/ejercicios/:id`).
 - Transición de página con `motion.div` (fade + slide sutil) en cada
   cambio de ruta.
 
@@ -410,8 +468,9 @@ inicializado según `prefers-color-scheme` si el usuario no eligió antes
 ### 10.5 Animación
 
 Todas las micro-interacciones usan **Motion**: springs para
-celebraciones/insignias/ligas, `AnimatePresence` para modales y paneles
-colapsables, transiciones de progreso con easing. `canvas-confetti` para
+celebraciones/insignias/ligas, `AnimatePresence` para modales, la paleta de
+búsqueda y el cambio de categoría en Ejercicios, transiciones de progreso
+con easing. `canvas-confetti` para
 las celebraciones (fin de sesión, insignia nueva, cambio de liga,
 actividad completada).
 
@@ -420,14 +479,32 @@ actividad completada).
 ## 11. Benchmark competitivo (contexto de decisiones)
 
 Se comparó contra Axonify, SC Training/EdApp, Qstream, TalentCards y las
-mecánicas públicas de Duolingo. Hallazgo: la app ya igualaba el núcleo
-pedagógico (SRS real) pero carecía de insignias/certificados, ligas,
+mecánicas públicas de Duolingo. Hallazgo inicial: la app ya igualaba el
+núcleo pedagógico (SRS real) pero carecía de insignias/certificados, ligas,
 analítica de administrador y experiencia instalable/offline — las 4
 brechas que se cerraron en los PRs #16–#19 (§12). Con eso, Formación WOM
 alcanza paridad funcional con esas plataformas comerciales a costo $0.
 
-Quedan fuera de alcance, documentadas como pendientes (P3):
+**Benchmark UX/UI multidimensional** (`design/revision-ux-benchmark.md`):
+una revisión posterior puntuó la app 1–10 en **8 dimensiones** contra el
+estándar de la categoría (actividad núcleo, SRS/retención, gamificación,
+ligas, onboarding, analítica de jefaturas, vínculo a KPI, accesibilidad).
+Tras 5 ciclos de mejora el promedio pasó de **6.3 → 7.3**: se sumó ligas por
+división + auto-competencia, quick-start, limpieza de la celebración +
+accesibilidad del núcleo, **aprendizaje basado en confianza** (el "foso"
+pedagógico) y **analítica de jefaturas Nivel 2**. Siete de las ocho
+dimensiones quedan en 7.5+. El scorecard visual de las dimensiones vive en
+`design/scorecard-dimensiones.html`. La única dimensión baja es el **vínculo
+a KPI del negocio** (dim. 7, 3.0), pendiente de una decisión de negocio (ver
+abajo).
 
+Quedan fuera de alcance, documentadas como pendientes:
+
+- **Vínculo formación ↔ KPI del negocio** (dim. 7, la palanca estratégica
+  más alta): conectar los ejercicios con AHT/FCR/CSAT/conversión para que la
+  formación sea "no opcional". **Bloqueado por una decisión de negocio** —
+  qué KPI y de qué fuente sale el dato—, no por lo técnico. Hay recordatorio
+  programado (20-jul-2026).
 - **Push notifications reales** (requiere infraestructura de push +
   service worker avanzado). Mitigación actual: racha e insignias como
   incentivo visual dentro de la app.
@@ -444,7 +521,7 @@ Quedan fuera de alcance, documentadas como pendientes (P3):
 - **Manifest**: nombre, iconos WOM 192/512 (generados con el degradado
   corporativo), `display: standalone`, `theme_color` morado.
 - **Service worker**: precache de todo el shell (JS, CSS, fuentes,
-  iconos — ~42 archivos), `registerType: autoUpdate`.
+  iconos — ~38 archivos), `registerType: autoUpdate`.
 - Instalable desde el navegador móvil ("Agregar a pantalla de inicio"),
   abre a pantalla completa con icono y splash propios.
 - Compatible con el modo offline de práctica (§6.4).
@@ -469,7 +546,9 @@ src/
   lib/
     supabase.ts              # cliente tipado (lee VITE_SUPABASE_*)
     database.types.ts        # tipos generados a mano del esquema Supabase
-    srs.ts                   # algoritmo Leitner (cajas, intervalos, maestría)
+    srs.ts                   # Leitner + confianza (cajas, intervalos, maestría, 2×2)
+    seguimiento.ts           # rangos de fecha, precisión por objetivo (analítica)
+    busqueda.ts              # índice + búsqueda de dominios/ejercicios (buscador global)
     gamificacion.ts          # XP, niveles, ligas
     insignias.ts             # catálogo y evaluación de insignias
     certificado.ts           # generación de certificado PNG en canvas
@@ -477,29 +556,38 @@ src/
 
   data/
     contenido.ts             # catálogo de dominios/objetivos/ejercicios + categorías
+    contenido.test.ts        # test de integridad del catálogo (vitest)
 
   components/
     Layout.tsx                # shell (sidebar/bottom-nav, header, tema, offline sync)
-    AuthLayout.tsx             # panel de marca split-screen para pantallas de auth
-    MarcaWom.tsx                # logo/wordmark reutilizable
-    ui.tsx                      # Boton, Campo, Tarjeta, MensajeError, EstadoCarga, Esqueleto
-    ContadorAnimado.tsx          # número que cuenta hacia arriba (ease-out)
-    InsigniaModal.tsx             # modal de celebración (insignias y cambios de liga)
-    AdminEquipo.tsx                # tabla de seguimiento + contenido difícil
-    AdminActividades.tsx            # gestión de actividades obligatorias (admin)
+    BuscadorGlobal.tsx         # paleta de búsqueda global (⌘K) del header
+    EstadoConexion.tsx          # indicador de conexión / sincronización offline
+    AuthLayout.tsx               # panel de marca split-screen para pantallas de auth
+    MarcaWom.tsx                  # logo/wordmark reutilizable
+    ui.tsx                        # Boton, Campo, Tarjeta, MensajeError, EstadoCarga, Esqueleto
+    ContadorAnimado.tsx            # número que cuenta hacia arriba (ease-out)
+    InsigniaModal.tsx               # modal de celebración (insignias y cambios de liga)
+    ErrorBoundary.tsx                # captura errores de página sin tumbar la navegación
+    AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2)
+    AdminActividades.tsx               # gestión de actividades obligatorias (admin)
 
   pages/
     Login.tsx / Registro.tsx / Recuperar.tsx / Restablecer.tsx / CuentaInactiva.tsx
     Panel.tsx                 # dashboard: nivel, racha, XP, ranking, héroes, insignias
-    Ejercicios.tsx             # categorías colapsables → dominios → practicar
-    Practica.tsx                 # sesión de práctica con SRS, XP y celebración
+    Ejercicios.tsx             # categorías en grilla de bloques → dominios → practicar
+    Practica.tsx                 # sesión de práctica con SRS + confianza, XP y celebración
     Consultas.tsx                  # relator: enviar/ver consultas (+ EstadoConsulta compartido)
     Admin.tsx                       # panel admin (relatores, equipo, actividades, consultas)
-    FichaRelator.tsx                  # ficha individual con gráfico y metas
+    FichaRelator.tsx                  # ficha individual con gráfico, drill al objetivo y metas
     Actividades.tsx                    # relator: actividades obligatorias
 
+design/                      # documentos de trabajo (no entran al bundle)
+  revision-ux-benchmark.md   # benchmark UX/UI multidimensional (8 dims) + re-evaluaciones
+  scorecard-dimensiones.html # scorecard visual de las 8 dimensiones
+  metodologia-beneficios.md  # análisis pedagógico del contenido Club WOM
+
 .github/workflows/
-  ci.yml                     # lint + build en cada PR
+  ci.yml                     # lint + tests (vitest) + build en cada PR
   deploy-pages.yml           # build + publica a rama gh-pages en cada push a main
 
 vite.config.ts               # plugins: react, tailwindcss, PWA
@@ -552,21 +640,32 @@ VITE_SUPABASE_ANON_KEY=<clave publicable>
 
 ## 16. Estado y próximos pasos sugeridos
 
-**Completo y en producción:** autenticación con activación por admin,
-catálogo de 12 dominios con SRS Leitner y anti-copia, gamificación
-completa (XP/niveles/racha/ranking/ligas/insignias/certificados),
-actividades obligatorias con cumplimiento, panel admin con analítica
-individual y de equipo, identidad visual WOM con modo oscuro, PWA
-instalable con práctica offline.
+**Completo y en producción (al 2026-07-12):** autenticación con activación
+por admin, catálogo de **13 dominios** con SRS Leitner, anti-copia y
+**aprendizaje basado en confianza** (2×2, detección del *seguro-pero-
+equivocado*), gamificación completa (XP/niveles/racha/ranking/**ligas por
+división + auto-competencia**/insignias/certificados), actividades
+obligatorias con cumplimiento, **quick-start** ("Repasar ahora" salta directo
+a la sesión), Ejercicios en **grilla de bloques**, **buscador global** (paleta
+⌘K que encuentra dominios y ejercicios), panel admin con analítica individual
+y de equipo **Nivel 2** (qué atender, export CSV, rango de fechas, tendencia,
+drill al objetivo), pantalla núcleo con celebración depurada y accesibilidad
+(aria-live/foco/AA), identidad visual WOM con modo oscuro, PWA instalable con
+práctica offline. Benchmark UX/UI multidimensional (§11): promedio **7.3/10**,
+7 de 8 dimensiones en 7.5+.
 
 **Pendiente (decisión de negocio, no técnica):**
+- **Vínculo formación ↔ KPI del negocio** (dim. 7 del benchmark, hoy 3.0 —
+  la última palanca estratégica): definir qué KPI (AHT/FCR/CSAT/conversión) y
+  de qué fuente sale el dato. Con eso se construye. Recordatorio programado
+  para el 20-jul-2026.
 - Activar en el dashboard de Supabase la protección de contraseñas
   filtradas (HaveIBeenPwned) — Auth → Passwords.
 - Cambiar la rama por defecto del repo a `main` en GitHub Settings
   (cosmético; bloqueado para la sesión automatizada por política de
   permisos).
 
-**Ideas de continuidad** (no comprometidas, para cuando se retome el
-proyecto): push notifications reales, generación de preguntas asistida
-por IA desde el panel admin, exportar reportes de equipo a PDF/Excel,
-soporte multi-idioma si WOM lo requiere en otras operaciones.
+**Ideas de continuidad** (no comprometidas): que el buscador guarde
+búsquedas/dominios recientes, push notifications reales, generación de
+preguntas asistida por IA desde el panel admin, exportar reportes de equipo a
+PDF/Excel, soporte multi-idioma si WOM lo requiere en otras operaciones.

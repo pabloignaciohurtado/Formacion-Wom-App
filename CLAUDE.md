@@ -24,9 +24,19 @@ por las malas.
   (inactivo, no tocar) y en algún momento Pablo mencionó un dashboard
   llamado "formación-mujer" que **no es este proyecto** (confusión de
   navegación suya, no un proyecto real relacionado).
-- **Estado al 2026-07-09:** 20 PRs merged, funcionalidad completa en
-  producción (ver §16 de `DOCUMENTACION.md` para el detalle). No hay
-  trabajo a medias ni ramas colgando.
+- **Estado al 2026-07-12:** funcionalidad completa en producción (ver §16
+  de `DOCUMENTACION.md`). No hay trabajo a medias ni ramas colgando.
+  Desde el 2026-07-09 se sumaron (PRs merged, todos desplegados): ligas por
+  división + auto-competencia, quick-start, limpieza de celebración +
+  accesibilidad del núcleo, **aprendizaje basado en confianza** en el SRS
+  (columna `attempts.confianza`, 2×2 con detección del *seguro-pero-
+  equivocado*), **analítica de jefaturas Nivel 1 y 2** (qué atender, export
+  CSV, rango de fechas, tendencia, drill al objetivo), **dominio Club WOM**
+  (13 dominios; + `contenido.test.ts` de integridad), **Ejercicios en grilla
+  de bloques**, y **buscador global** (paleta ⌘K en el header:
+  `BuscadorGlobal.tsx` + `lib/busqueda.ts`, encuentra dominios y ejercicios).
+  Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
+  scorecard en `design/scorecard-dimensiones.html`).
 
 ## Cómo se trabaja en este repo
 
@@ -94,7 +104,28 @@ por las malas.
 - **Playwright se instala en el proyecto** (`npm install --no-save
   playwright-core`) porque `npm install` normal a veces lo purga entre
   pasos; si un script `.mjs` de capturas falla con `ERR_MODULE_NOT_FOUND`,
-  reinstalar antes de asumir otra cosa.
+  reinstalar antes de asumir otra cosa. El script `.mjs` debe estar **dentro
+  del proyecto** (no en `/tmp`) para que resuelva `node_modules`.
+- **`git push` directo está BLOCKED (403)** en esta sesión: se usa
+  `mcp__Github2__push_files` con el contenido inline y luego se verifica
+  `git diff HEAD origin/<rama> | wc -l == 0`. Para fidelidad byte a byte con
+  acentos y símbolos, generar el string escapado con
+  `python3 -c "import json;print(json.dumps(open(F).read()))"` y pegar ese
+  literal como `content` del push (evita errores de escape a mano).
+- **Verificar CI con `pull_request_read` método `get_check_runs`** (da el
+  check "verificar" con conclusion success/failure). El `get_status` del PR
+  devuelve *commit statuses* (total_count 0), no los check runs de Actions;
+  alternativa: `actions_list list_workflow_runs` filtrando por la rama.
+- **Trabajar siempre en rama de sesión**, nunca commitear en `main` local. Si
+  por error se commiteó en main local, `git checkout main && git reset --hard
+  origin/main` lo realinea (el push real va por MCP a la rama, no por git).
+- **Capturas Playwright:** con el build local (base `/`) navegar a la ruta
+  **sin** el prefijo `/Formacion-Wom-App/` (ej. `http://localhost:4173/ejercicios`),
+  o React Router no matchea. El gate de cuenta exige un perfil simulado con
+  `{ activo: true, role: 'admin' }` (la columna es `role`, no `rol`).
+- **`pkill -f "vite preview"` combinado con `&` o más comandos en una misma
+  llamada Bash da exit 144** y corta el resto — correr el kill solo, en su
+  propia llamada, o simplemente lanzar el preview en otro puerto.
 
 ## Pendientes de decisión humana (no técnicos)
 
@@ -107,11 +138,12 @@ por las malas.
   Bloqueado hasta que defina: (1) qué KPI conectar (AHT, FCR, CSAT,
   conversión…) y (2) de qué fuente/formato sale el dato (una planilla de
   ejemplo basta). Con eso se construye. Hay un recordatorio programado
-  para el 20-jul-2026. Contexto: `docs/revision-ux-benchmark.md` §7 y §11.
+  para el 20-jul-2026. Contexto: `design/revision-ux-benchmark.md` §7 y §11.
 
 ## Ideas de continuidad no comprometidas
 
-Si Pablo pide seguir: push notifications reales, generación de preguntas
-asistida por IA desde el panel admin (hoy se agregan preguntas al catálogo
-manualmente cuando él pasa material de referencia), exportar reportes de
-equipo a PDF/Excel. Ver §16 de `DOCUMENTACION.md`.
+Si Pablo pide seguir: que el buscador global guarde búsquedas/dominios
+recientes (ofrecido, no comprometido), push notifications reales, generación
+de preguntas asistida por IA desde el panel admin (hoy se agregan preguntas al
+catálogo manualmente cuando él pasa material de referencia), exportar reportes
+de equipo a PDF/Excel. Ver §16 de `DOCUMENTACION.md`.
