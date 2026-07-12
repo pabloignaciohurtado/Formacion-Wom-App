@@ -62,7 +62,7 @@ infraestructura que mantener.
 ```
 push a una rama de trabajo
    → PR (borrador) contra main
-   → GitHub Actions "CI": npm ci, oxlint, tsc + vite build
+   → GitHub Actions "CI": npm install, oxlint, tsc + vite build
    → si está verde: merge a main
    → GitHub Actions "Deploy a GitHub Pages":
         build con --base=/Formacion-Wom-App/
@@ -72,6 +72,14 @@ push a una rama de trabajo
 ```
 
 Archivos clave: `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`.
+
+**Por qué `npm install` y no `npm ci`**: el proxy de la sesión automatizada
+no permite pushear por API el `package-lock.json` regenerado (~268 KB), así
+que al cambiar dependencias el lock puede quedar detrás de `package.json`.
+`npm install` reconcilia ambos y compila; `npm ci` fallaría por lock
+desincronizado. Para volver a `npm ci` estricto basta regenerar y commitear
+el lock desde un entorno con push directo (`npm install && git commit
+package-lock.json`).
 
 **Por qué `gh-pages` y no el flujo nativo de Pages ("GitHub Actions" como
 source)**: el token del workflow no tiene permiso para *habilitar* el sitio
@@ -391,8 +399,14 @@ firmas, hitos) con seguimiento de cumplimiento.
      practicó), estado de obligatorias, enlace a su ficha individual.
    - **Contenido difícil**: dominios con precisión de equipo <70%,
      candidatos a reforzar en sesión presencial o a revisar sus preguntas.
-   - **Export CSV** del seguimiento (respeta el filtro activo) y del
-     contenido difícil, para cruces propios de la jefatura.
+   - **Exportar** el reporte de equipo desde un menú único (`lib/reportes.ts`):
+     **PDF** branded de una página (resumen "qué atender" + seguimiento +
+     tendencia + contenido difícil, con numeración), **Excel .xlsx** de tres
+     hojas (Seguimiento / Tendencia / Contenido difícil) para cruces propios,
+     y **CSV** de la tabla (respeta el filtro activo). Las tres salidas parten
+     de los mismos *builders* puros; jspdf y write-excel-file se cargan con
+     **dynamic import** (fuera del bundle inicial). El contenido difícil
+     mantiene además su propio export CSV rápido.
    - **Nivel 2**: **rango de fechas** (7/30/90 días · todo) que acota el
      seguimiento y el contenido difícil al período, y **gráfico de tendencia
      del equipo** (8 semanas: barra = volumen, % = precisión) que responde
@@ -548,6 +562,8 @@ src/
     database.types.ts        # tipos generados a mano del esquema Supabase
     srs.ts                   # Leitner + confianza (cajas, intervalos, maestría, 2×2)
     seguimiento.ts           # rangos de fecha, precisión por objetivo (analítica)
+    csv.ts                   # generación/descarga de CSV en el cliente
+    reportes.ts              # reporte de equipo a PDF/Excel (builders puros + descargas diferidas)
     busqueda.ts              # índice + búsqueda de dominios/ejercicios (buscador global)
     gamificacion.ts          # XP, niveles, ligas
     insignias.ts             # catálogo y evaluación de insignias
@@ -557,6 +573,7 @@ src/
   data/
     contenido.ts             # catálogo de dominios/objetivos/ejercicios + categorías
     contenido.test.ts        # test de integridad del catálogo (vitest)
+    (reportes.test.ts en lib/ cubre los builders de export)
 
   components/
     Layout.tsx                # shell (sidebar/bottom-nav, header, tema, offline sync)
@@ -568,7 +585,7 @@ src/
     ContadorAnimado.tsx            # número que cuenta hacia arriba (ease-out)
     InsigniaModal.tsx               # modal de celebración (insignias y cambios de liga)
     ErrorBoundary.tsx                # captura errores de página sin tumbar la navegación
-    AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2)
+    AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2) + menú Exportar (PDF/Excel/CSV)
     AdminActividades.tsx               # gestión de actividades obligatorias (admin)
 
   pages/
@@ -648,8 +665,9 @@ división + auto-competencia**/insignias/certificados), actividades
 obligatorias con cumplimiento, **quick-start** ("Repasar ahora" salta directo
 a la sesión), Ejercicios en **grilla de bloques**, **buscador global** (paleta
 ⌘K que encuentra dominios y ejercicios), panel admin con analítica individual
-y de equipo **Nivel 2** (qué atender, export CSV, rango de fechas, tendencia,
-drill al objetivo), pantalla núcleo con celebración depurada y accesibilidad
+y de equipo **Nivel 2** (qué atender, rango de fechas, tendencia, drill al
+objetivo, **exportar el reporte a PDF/Excel/CSV**), pantalla núcleo con
+celebración depurada y accesibilidad
 (aria-live/foco/AA), identidad visual WOM con modo oscuro, PWA instalable con
 práctica offline. Benchmark UX/UI multidimensional (§11): promedio **7.3/10**,
 7 de 8 dimensiones en 7.5+.
@@ -667,5 +685,5 @@ práctica offline. Benchmark UX/UI multidimensional (§11): promedio **7.3/10**,
 
 **Ideas de continuidad** (no comprometidas): que el buscador guarde
 búsquedas/dominios recientes, push notifications reales, generación de
-preguntas asistida por IA desde el panel admin, exportar reportes de equipo a
-PDF/Excel, soporte multi-idioma si WOM lo requiere en otras operaciones.
+preguntas asistida por IA desde el panel admin, soporte multi-idioma si WOM
+lo requiere en otras operaciones.
