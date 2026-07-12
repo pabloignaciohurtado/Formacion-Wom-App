@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, ChevronDown, ChevronRight } from 'lucide-react'
+import { Award, ChevronRight } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -96,7 +96,7 @@ export default function Ejercicios() {
   const [estados, setEstados] = useState<Record<string, EstadoDominio> | null>(
     null
   )
-  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
+  const [activa, setActiva] = useState<string>(CATEGORIAS[0].id)
 
   useEffect(() => {
     if (!user) return
@@ -124,7 +124,7 @@ export default function Ejercicios() {
         }
       }
       setEstados(porDominio)
-      // Abre por defecto la categoría con más trabajo pendiente
+      // Selecciona por defecto la categoría con más trabajo pendiente
       let mejor = CATEGORIAS[0].id
       let max = -1
       for (const cat of CATEGORIAS) {
@@ -137,7 +137,7 @@ export default function Ejercicios() {
           mejor = cat.id
         }
       }
-      setAbiertas(new Set([mejor]))
+      setActiva(mejor)
     }
 
     void cargar()
@@ -146,13 +146,11 @@ export default function Ejercicios() {
     }
   }, [user])
 
-  const alternar = (id: string) =>
-    setAbiertas((prev) => {
-      const nuevo = new Set(prev)
-      if (nuevo.has(id)) nuevo.delete(id)
-      else nuevo.add(id)
-      return nuevo
-    })
+  const categoriaActiva =
+    CATEGORIAS.find((c) => c.id === activa) ?? CATEGORIAS[0]
+  const dominiosActivos = categoriaActiva.dominios
+    .map((id) => DOMINIOS.find((d) => d.id === id))
+    .filter((d): d is Dominio => Boolean(d))
 
   return (
     <section>
@@ -163,85 +161,88 @@ export default function Ejercicios() {
       </p>
 
       {!estados ? (
-        <div className="mt-6 space-y-3">
-          {CATEGORIAS.map((c) => (
-            <Esqueleto key={c.id} className="h-20" />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {CATEGORIAS.map((c) => (
+              <Esqueleto key={c.id} className="h-28" />
+            ))}
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Esqueleto key={i} className="h-56" />
+            ))}
+          </div>
+        </>
       ) : (
-        <div className="mt-6 space-y-4">
-          {CATEGORIAS.map((categoria) => {
-            const dominios = categoria.dominios
-              .map((id) => DOMINIOS.find((d) => d.id === id))
-              .filter((d): d is Dominio => Boolean(d))
-            const porHacer = dominios.reduce(
-              (s, d) =>
-                s + estados[d.id].pendientes + estados[d.id].nuevos,
-              0
-            )
-            const maestriaProm = Math.round(
-              dominios.reduce((s, d) => s + estados[d.id].maestria, 0) /
-                Math.max(dominios.length, 1)
-            )
-            const abierta = abiertas.has(categoria.id)
-            return (
-              <div key={categoria.id}>
+        <>
+          {/* Bloques de categoría: se elige uno y sus dominios aparecen abajo */}
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {CATEGORIAS.map((categoria) => {
+              const dominios = categoria.dominios
+                .map((id) => DOMINIOS.find((d) => d.id === id))
+                .filter((d): d is Dominio => Boolean(d))
+              const porHacer = dominios.reduce(
+                (s, d) => s + estados[d.id].pendientes + estados[d.id].nuevos,
+                0
+              )
+              const maestriaProm = Math.round(
+                dominios.reduce((s, d) => s + estados[d.id].maestria, 0) /
+                  Math.max(dominios.length, 1)
+              )
+              const seleccionada = activa === categoria.id
+              return (
                 <button
+                  key={categoria.id}
                   type="button"
-                  onClick={() => alternar(categoria.id)}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-black/5 transition-colors hover:bg-wom-50/50"
-                  aria-expanded={abierta}
+                  onClick={() => setActiva(categoria.id)}
+                  aria-pressed={seleccionada}
+                  className={`flex flex-col gap-2 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 transition-all dark:ring-white/10 ${
+                    seleccionada
+                      ? 'shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-2 ring-wom-600'
+                      : 'ring-black/5 hover:ring-wom-300'
+                  }`}
                 >
                   <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-wom-600 to-magenta-500 text-xl">
                     {categoria.icono}
                   </span>
-                  <span className="flex-1">
-                    <span className="block font-bold">{categoria.titulo}</span>
-                    <span className="block text-sm text-tinta-suave">
-                      {dominios.length} dominios · maestría {maestriaProm}%
-                      {porHacer > 0 && (
-                        <span className="ml-1 font-semibold text-magenta-500">
-                          · {porHacer} por hacer
-                        </span>
-                      )}
-                    </span>
+                  <span className="font-bold leading-tight">
+                    {categoria.titulo}
                   </span>
-                  <m.span
-                    animate={{ rotate: abierta ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-tinta-suave"
-                  >
-                    <ChevronDown className="size-5" />
-                  </m.span>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {abierta && (
-                    <m.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.25, ease: 'easeOut' }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid gap-4 pt-4 md:grid-cols-2 xl:grid-cols-3">
-                        {dominios.map((dominio, i) => (
-                          <TarjetaDominio
-                            key={dominio.id}
-                            dominio={dominio}
-                            estado={estados[dominio.id]}
-                            indice={i}
-                            nombrePerfil={perfil?.nombre ?? ''}
-                          />
-                        ))}
-                      </div>
-                    </m.div>
+                  <span className="mt-auto text-xs text-tinta-suave">
+                    {dominios.length} dominios · maestría {maestriaProm}%
+                  </span>
+                  {porHacer > 0 && (
+                    <span className="text-xs font-semibold text-magenta-500">
+                      {porHacer} por hacer
+                    </span>
                   )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
-        </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Dominios de la categoría seleccionada */}
+          <AnimatePresence mode="wait">
+            <m.div
+              key={activa}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            >
+              {dominiosActivos.map((dominio, i) => (
+                <TarjetaDominio
+                  key={dominio.id}
+                  dominio={dominio}
+                  estado={estados[dominio.id]}
+                  indice={i}
+                  nombrePerfil={perfil?.nombre ?? ''}
+                />
+              ))}
+            </m.div>
+          </AnimatePresence>
+        </>
       )}
     </section>
   )
