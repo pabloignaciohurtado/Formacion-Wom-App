@@ -403,3 +403,269 @@ export async function descargarReportePDF(e: EntradaReporte): Promise<void> {
 
   doc.save('reporte-equipo.pdf')
 }
+
+// ── Ficha individual del relator ─────────────────────────────────────
+
+// objetivo_id → título y dominio, para nombrar el drill en el reporte.
+const OBJETIVOS = new Map<string, { titulo: string; dominio: string }>()
+for (const d of DOMINIOS) {
+  for (const o of d.objetivos) {
+    OBJETIVOS.set(o.id, { titulo: o.titulo, dominio: d.titulo })
+  }
+}
+
+export function nombreObjetivo(id: string): { titulo: string; dominio: string } {
+  return OBJETIVOS.get(id) ?? { titulo: id, dominio: '' }
+}
+
+export type FilaSemanaXP = { etiqueta: string; xp: number }
+export type FilaMaestria = { dominio: string; valor: number }
+export type FilaObjetivoFlojo = {
+  objetivo_id: string
+  intentos: number
+  correctas: number
+  precision: number
+}
+export type FilaMeta = { dominio: string; objetivo: number; actual: number }
+
+export const CABECERAS_SEMANA = ['Semana', 'XP'] as const
+export function filasSemanas(semanas: FilaSemanaXP[]): Celda[][] {
+  return semanas.map((s) => [s.etiqueta, s.xp])
+}
+
+export const CABECERAS_MAESTRIA = ['Dominio', 'Maestría %'] as const
+export function filasMaestria(maestrias: FilaMaestria[]): Celda[][] {
+  return maestrias.map((m) => [m.dominio, m.valor])
+}
+
+export const CABECERAS_OBJETIVOS = [
+  'Objetivo',
+  'Dominio',
+  'Precisión %',
+  'Correctas',
+  'Intentos',
+] as const
+export function filasObjetivos(objetivos: FilaObjetivoFlojo[]): Celda[][] {
+  return objetivos.map((o) => {
+    const info = nombreObjetivo(o.objetivo_id)
+    return [info.titulo, info.dominio, o.precision, o.correctas, o.intentos]
+  })
+}
+
+export const CABECERAS_METAS = ['Dominio', 'Meta %', 'Actual %', 'Estado'] as const
+export function filasMetas(metas: FilaMeta[]): Celda[][] {
+  return metas.map((m) => [
+    m.dominio,
+    m.objetivo,
+    m.actual,
+    m.actual >= m.objetivo ? 'cumplida' : 'en progreso',
+  ])
+}
+
+export type EntradaFicha = {
+  nombre: string
+  email: string
+  ligaNombre: string
+  generadoEn: number
+  xp: number
+  intentos: number
+  correctas: number
+  precision: number
+  semanas: FilaSemanaXP[]
+  maestrias: FilaMaestria[]
+  objetivos: FilaObjetivoFlojo[]
+  metas: FilaMeta[]
+}
+
+// Nombre de archivo seguro a partir del nombre del relator.
+function slug(texto: string): string {
+  const s = texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+  return s || 'relator'
+}
+
+export async function descargarFichaExcel(f: EntradaFicha): Promise<void> {
+  const { default: writeXlsxFile } = await import('write-excel-file/browser')
+  const meta = [
+    `Relator: ${f.nombre}${f.email ? ` (${f.email})` : ''}`,
+    `Liga: ${f.ligaNombre}`,
+    'Período: últimas 8 semanas',
+    `Generado: ${fechaLegible(f.generadoEn)}`,
+    `Resumen: ${f.xp} XP · ${f.intentos} ejercicios · ${f.precision}% precisión`,
+  ]
+  const hojas: Sheet<ContenidoArchivo>[] = [
+    hojaReporte(
+      'Maestría',
+      `Ficha de ${f.nombre}`,
+      meta,
+      CABECERAS_MAESTRIA,
+      filasMaestria(f.maestrias),
+      [30, 12]
+    ),
+    hojaReporte(
+      'Evolución XP',
+      'Evolución semanal (XP)',
+      ['Últimas 8 semanas.'],
+      CABECERAS_SEMANA,
+      filasSemanas(f.semanas),
+      [16, 12]
+    ),
+  ]
+  if (f.objetivos.length > 0) {
+    hojas.push(
+      hojaReporte(
+        'Objetivos a reforzar',
+        'Objetivos a reforzar (precisión bajo 70%, 3+ intentos)',
+        ['Lo concreto para trabajar en un 1:1.'],
+        CABECERAS_OBJETIVOS,
+        filasObjetivos(f.objetivos),
+        [26, 20, 12, 12, 12]
+      )
+    )
+  }
+  if (f.metas.length > 0) {
+    hojas.push(
+      hojaReporte(
+        'Metas',
+        'Metas de maestría',
+        ['Meta asignada vs. avance real por dominio.'],
+        CABECERAS_METAS,
+        filasMetas(f.metas),
+        [30, 10, 10, 14]
+      )
+    )
+  }
+  await writeXlsxFile(hojas, {
+    fontFamily: 'Calibri',
+    fontSize: 11,
+  }).toFile(`ficha-${slug(f.nombre)}.xlsx`)
+}
+
+export async function descargarFichaPDF(f: EntradaFicha): Promise<void> {
+  const [{ jsPDF }, autoTable] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable').then((m) => m.default),
+  ])
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const W = doc.internal.pageSize.getWidth()
+  const M = 40
+
+  // Banda de marca
+  doc.setFillColor(MORADO_RGB[0], MORADO_RGB[1], MORADO_RGB[2])
+  doc.rect(0, 0, W, 78, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(20)
+  doc.text('Formación WOM', M, 34)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(13)
+  doc.text(`Ficha de relator · ${f.nombre}`, M, 56)
+  doc.setFontSize(9)
+  doc.text(f.ligaNombre, W - M, 28, { align: 'right' })
+  doc.text('Últimas 8 semanas', W - M, 42, { align: 'right' })
+  doc.text(`Generado: ${fechaLegible(f.generadoEn)}`, W - M, 56, {
+    align: 'right',
+  })
+
+  // Resumen en tres tarjetas
+  const tarjetas: [string, string][] = [
+    ['XP (8 semanas)', String(f.xp)],
+    ['Ejercicios', String(f.intentos)],
+    ['Precisión', `${f.precision}%`],
+  ]
+  const gap = 10
+  const cw = (W - M * 2 - gap * 2) / 3
+  const cy = 100
+  tarjetas.forEach((t, i) => {
+    const cx = M + i * (cw + gap)
+    doc.setFillColor(WOM_50_RGB[0], WOM_50_RGB[1], WOM_50_RGB[2])
+    doc.roundedRect(cx, cy, cw, 48, 6, 6, 'F')
+    doc.setTextColor(MORADO_RGB[0], MORADO_RGB[1], MORADO_RGB[2])
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(21)
+    doc.text(t[1], cx + 12, cy + 26)
+    doc.setTextColor(73, 76, 102)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.text(t[0], cx + 12, cy + 40)
+  })
+
+  let y = cy + 48 + 22
+
+  const finalY = () =>
+    (doc as unknown as ConAutoTabla).lastAutoTable?.finalY ?? y
+
+  const agregarTabla = (
+    titulo: string,
+    cabeceras: readonly string[],
+    filas: Celda[][],
+    yPos: number
+  ) => {
+    doc.setTextColor(TINTA_RGB[0], TINTA_RGB[1], TINTA_RGB[2])
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12)
+    doc.text(titulo, M, yPos)
+    autoTable(doc, {
+      startY: yPos + 8,
+      head: [[...cabeceras]],
+      body: filas.map((row) => row.map(String)),
+      styles: {
+        fontSize: 8,
+        cellPadding: 4,
+        lineColor: [230, 230, 235],
+        lineWidth: 0.5,
+      },
+      headStyles: {
+        fillColor: [MORADO_RGB[0], MORADO_RGB[1], MORADO_RGB[2]],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [WOM_50_RGB[0], WOM_50_RGB[1], WOM_50_RGB[2]],
+      },
+      margin: { left: M, right: M },
+    })
+    return finalY() + 26
+  }
+
+  y = agregarTabla(
+    'Maestría por dominio',
+    CABECERAS_MAESTRIA,
+    filasMaestria(f.maestrias),
+    y
+  )
+  y = agregarTabla(
+    'Evolución semanal (XP)',
+    CABECERAS_SEMANA,
+    filasSemanas(f.semanas),
+    y
+  )
+  if (f.objetivos.length > 0) {
+    y = agregarTabla(
+      'Objetivos a reforzar (precisión bajo 70%, 3+ intentos)',
+      CABECERAS_OBJETIVOS,
+      filasObjetivos(f.objetivos),
+      y
+    )
+  }
+  if (f.metas.length > 0) {
+    y = agregarTabla('Metas de maestría', CABECERAS_METAS, filasMetas(f.metas), y)
+  }
+
+  const paginas = doc.getNumberOfPages()
+  const H = doc.internal.pageSize.getHeight()
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(73, 76, 102)
+    doc.text('Generado desde Formación WOM · uso interno', M, H - 20)
+    doc.text(`Página ${i} de ${paginas}`, W - M, H - 20, { align: 'right' })
+  }
+
+  doc.save(`ficha-${slug(f.nombre)}.pdf`)
+}

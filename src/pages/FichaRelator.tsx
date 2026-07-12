@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Target, Zap } from 'lucide-react'
+import { ArrowLeft, FileText, Table2, Target, Zap } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { DOMINIOS } from '../data/contenido'
@@ -10,6 +10,12 @@ import {
   precisionPorObjetivo,
   type PrecisionObjetivo,
 } from '../lib/seguimiento'
+import {
+  descargarFichaExcel,
+  descargarFichaPDF,
+  type EntradaFicha,
+} from '../lib/reportes'
+import { MenuExportar } from '../components/MenuExportar'
 import { Boton, Esqueleto, MensajeError, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
@@ -93,6 +99,7 @@ export default function FichaRelator() {
   const [metaObjetivo, setMetaObjetivo] = useState('80')
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [generando, setGenerando] = useState<null | 'pdf' | 'excel'>(null)
 
   useEffect(() => {
     if (!id) return
@@ -214,6 +221,54 @@ export default function FichaRelator() {
   const precision =
     stats.intentos > 0 ? Math.round((100 * stats.correctas) / stats.intentos) : 0
 
+  // Arma el reporte de la ficha para PDF/Excel a partir de lo ya cargado.
+  const entradaFicha = (): EntradaFicha => ({
+    nombre: perfil.nombre,
+    email: perfil.email ?? '',
+    ligaNombre: liga.nombre,
+    generadoEn: Date.now(),
+    xp,
+    intentos: stats.intentos,
+    correctas: stats.correctas,
+    precision,
+    semanas,
+    maestrias: maestrias.map((m) => ({ dominio: m.dominio, valor: m.valor })),
+    objetivos: objetivosFlojos.map((o) => ({
+      objetivo_id: o.objetivo_id,
+      intentos: o.intentos,
+      correctas: o.correctas,
+      precision: o.precision,
+    })),
+    metas: metas.map((m) => {
+      const dom = DOMINIOS.find((d) => d.id === m.domain_id)
+      const actual =
+        maestrias.find((x) => x.dominio === dom?.titulo)?.valor ?? 0
+      return {
+        dominio: dom?.titulo ?? m.domain_id,
+        objetivo: m.maestria_objetivo,
+        actual,
+      }
+    }),
+  })
+
+  const exportarFichaPDF = async () => {
+    setGenerando('pdf')
+    try {
+      await descargarFichaPDF(entradaFicha())
+    } finally {
+      setGenerando(null)
+    }
+  }
+
+  const exportarFichaExcel = async () => {
+    setGenerando('excel')
+    try {
+      await descargarFichaExcel(entradaFicha())
+    } finally {
+      setGenerando(null)
+    }
+  }
+
   return (
     <section>
       <Link
@@ -236,6 +291,25 @@ export default function FichaRelator() {
         >
           {liga.icono} {liga.nombre}
         </span>
+        <MenuExportar
+          ocupado={generando !== null}
+          opciones={[
+            {
+              icono: FileText,
+              etiqueta: 'Ficha PDF',
+              detalle: 'Branded, para el 1:1 o el legajo',
+              onClick: exportarFichaPDF,
+              cargando: generando === 'pdf',
+            },
+            {
+              icono: Table2,
+              etiqueta: 'Excel (.xlsx)',
+              detalle: 'Maestría, evolución, objetivos y metas',
+              onClick: exportarFichaExcel,
+              cargando: generando === 'excel',
+            },
+          ]}
+        />
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-4">

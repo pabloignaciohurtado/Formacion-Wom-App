@@ -6,8 +6,13 @@ import {
   etiquetaRango,
   filasDificiles,
   filasEquipo,
+  filasMaestria,
+  filasMetas,
+  filasObjetivos,
+  filasSemanas,
   filasTendencia,
   nombreDominio,
+  nombreObjetivo,
   resumenReporte,
   textoPeriodo,
 } from './reportes'
@@ -120,5 +125,62 @@ describe('nombreDominio', () => {
   it('devuelve el título de un dominio real', () => {
     const dom = DOMINIOS[0]
     expect(nombreDominio(dom.id)).toBe(dom.titulo)
+  })
+})
+
+// ── Ficha individual del relator ─────────────────────────────────────
+
+describe('filasSemanas', () => {
+  it('proyecta etiqueta y XP en orden', () => {
+    expect(
+      filasSemanas([
+        { etiqueta: '1/6', xp: 120 },
+        { etiqueta: '8/6', xp: 0 },
+      ])
+    ).toEqual([
+      ['1/6', 120],
+      ['8/6', 0],
+    ])
+  })
+})
+
+describe('filasMaestria', () => {
+  it('deja dominio y valor, sin el ícono', () => {
+    expect(
+      filasMaestria([{ dominio: 'Roaming', valor: 80 }])
+    ).toEqual([['Roaming', 80]])
+  })
+})
+
+describe('nombreObjetivo y filasObjetivos', () => {
+  it('resuelve el título y dominio de un objetivo real', () => {
+    const dom = DOMINIOS[0]
+    const obj = dom.objetivos[0]
+    expect(nombreObjetivo(obj.id)).toEqual({
+      titulo: obj.titulo,
+      dominio: dom.titulo,
+    })
+    const filas = filasObjetivos([
+      { objetivo_id: obj.id, intentos: 6, correctas: 3, precision: 50 },
+    ])
+    expect(filas[0]).toEqual([obj.titulo, dom.titulo, 50, 3, 6])
+  })
+
+  it('objetivo inexistente deja el id y dominio vacío', () => {
+    expect(nombreObjetivo('nada')).toEqual({ titulo: 'nada', dominio: '' })
+  })
+})
+
+describe('filasMetas', () => {
+  it('marca cumplida cuando el actual alcanza la meta', () => {
+    expect(
+      filasMetas([
+        { dominio: 'Planes', objetivo: 80, actual: 85 },
+        { dominio: 'Roaming', objetivo: 80, actual: 60 },
+      ])
+    ).toEqual([
+      ['Planes', 80, 85, 'cumplida'],
+      ['Roaming', 80, 60, 'en progreso'],
+    ])
   })
 })
