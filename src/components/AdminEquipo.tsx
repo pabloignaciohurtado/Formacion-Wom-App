@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Download, Zap } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FileText,
+  Table2,
+  Zap,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { DOMINIOS } from '../data/contenido'
 import { ligaDe } from '../lib/gamificacion'
@@ -16,6 +23,17 @@ import {
   type RangoFechas,
   type Segmento,
 } from '../lib/seguimiento'
+import {
+  CABECERAS_DIFICIL,
+  CABECERAS_EQUIPO,
+  descargarReporteExcel,
+  descargarReportePDF,
+  filasDificiles,
+  filasEquipo,
+  type EntradaReporte,
+  type FilaDificil,
+  type FilaTendencia,
+} from '../lib/reportes'
 import { EstadoCarga, Tarjeta } from './ui'
 
 // Puente temporal: los RPC de Nivel 2 (resumen_equipo/precision_por_dominio
@@ -26,21 +44,6 @@ const rpcSuelto = supabase.rpc.bind(supabase) as unknown as (
   fn: string,
   args?: Record<string, unknown>
 ) => Promise<{ data: unknown; error: unknown }>
-
-type Dificultad = {
-  domain_id: string
-  intentos: number
-  correctas: number
-  precision_pct: number
-}
-
-type FilaTendencia = {
-  semana: string
-  intentos: number
-  correctas: number
-  precision_pct: number
-  activos: number
-}
 
 // Tendencia semanal del equipo: barra = ejercicios de la semana (volumen),
 // etiqueta = precisión (calidad). Juntas responden "¿mejora el equipo?" sin
@@ -113,18 +116,122 @@ const SEGMENTOS: { id: Segmento; etiqueta: (n: number) => string; clase: string 
   },
 ]
 
-function nombreDominio(id: string): string {
-  return DOMINIOS.find((d) => d.id === id)?.titulo ?? id
+// Menú de exportación: un solo disparador que ofrece el reporte completo en
+// PDF (para compartir/imprimir) o Excel (para cruces propios), más el CSV de
+// la tabla visible. Se cierra al hacer clic fuera o con Escape.
+type FormatoGenerando = null | 'excel' | 'pdf'
+
+function MenuExportar({
+  etiquetaCSV,
+  generando,
+  onPDF,
+  onExcel,
+  onCSV,
+}: {
+  etiquetaCSV: string
+  generando: FormatoGenerando
+  onPDF: () => void
+  onExcel: () => void
+  onCSV: () => void
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setAbierto(false)
+      }
+    }
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', fuera)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [abierto])
+
+  const opcion = (
+    Icono: typeof FileText,
+    etiqueta: string,
+    detalle: string,
+    onClick: () => void,
+    cargando: boolean
+  ) => (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={generando !== null}
+      onClick={() => {
+        setAbierto(false)
+        onClick()
+      }}
+      className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-niebla disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <Icono className="mt-0.5 size-4 shrink-0 text-wom-600" />
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold">
+          {etiqueta}
+          {cargando ? ' · generando…' : ''}
+        </span>
+        <span className="block text-xs text-tinta-suave">{detalle}</span>
+      </span>
+    </button>
+  )
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        disabled={generando !== null}
+        onClick={() => setAbierto((v) => !v)}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600 disabled:opacity-60"
+      >
+        <Download className="size-4" />
+        {generando ? 'Generando…' : 'Exportar'}
+        <ChevronDown className="size-3.5" />
+      </button>
+      {abierto && (
+        <div
+          role="menu"
+          className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          {opcion(
+            FileText,
+            'Reporte PDF',
+            'Branded, listo para compartir o imprimir',
+            onPDF,
+            generando === 'pdf'
+          )}
+          {opcion(
+            Table2,
+            'Excel (.xlsx)',
+            'Libro con seguimiento, tendencia y difíciles',
+            onExcel,
+            generando === 'excel'
+          )}
+          {opcion(Download, etiquetaCSV, 'Tabla visible en CSV', onCSV, false)}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // `conFicha` controla la columna de la ficha individual: el admin la tiene;
 // un supervisor no, porque esa ruta y sus consultas son de admin.
 export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
   const [equipo, setEquipo] = useState<FilaEquipo[] | null>(null)
-  const [dificiles, setDificiles] = useState<Dificultad[]>([])
+  const [dificiles, setDificiles] = useState<FilaDificil[]>([])
   const [filtro, setFiltro] = useState<Segmento | null>(null)
   const [rango, setRango] = useState<RangoFechas>('todo')
   const [tendencia, setTendencia] = useState<FilaTendencia[]>([])
+  const [generando, setGenerando] = useState<FormatoGenerando>(null)
 
   // Seguimiento y contenido difícil se re-consultan al cambiar el rango.
   useEffect(() => {
@@ -140,7 +247,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
       if (cancelado) return
       setEquipo((eq.data as FilaEquipo[] | null) ?? [])
       setDificiles(
-        ((dif.data as Dificultad[] | null) ?? []).filter(
+        ((dif.data as FilaDificil[] | null) ?? []).filter(
           (d) => d.precision_pct < 70
         )
       )
@@ -169,47 +276,49 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
     (f) => !filtro || enSegmento(f, filtro)
   )
 
-  const exportarEquipo = () => {
-    const filas = visibles.map((r) => {
-      const p = precisionPct(r.intentos, r.correctas)
-      const d = diasDesde(r.ultima_actividad)
-      return [
-        r.nombre,
-        ligaDe(r.liga).nombre,
-        r.xp,
-        r.intentos,
-        r.correctas,
-        p === null ? '' : p,
-        d === null ? 'nunca' : d,
-        r.obligatorias_pendientes,
-      ]
-    })
-    const csv = generarCSV(
-      [
-        'Ejecutivo',
-        'Liga',
-        'XP',
-        'Intentos',
-        'Correctas',
-        'Precisión %',
-        'Días desde última práctica',
-        'Obligatorias pendientes',
-      ],
-      filas
-    )
+  // Etiqueta del filtro activo (con su conteo) para dejar constancia en el
+  // reporte de qué segmento se exportó.
+  const etiquetaFiltro = filtro
+    ? SEGMENTOS.find((s) => s.id === filtro)?.etiqueta(atencion[filtro])
+    : null
+
+  // Entrada común a Excel y PDF: se arma en el momento de exportar para
+  // sellar la fecha de generación.
+  const entradaReporte = (): EntradaReporte => ({
+    rango,
+    generadoEn: Date.now(),
+    equipo: visibles,
+    equipoCompleto: equipo ?? [],
+    dificiles,
+    tendencia,
+    filtroEtiqueta: etiquetaFiltro,
+  })
+
+  const exportarCSV = () => {
+    const csv = generarCSV([...CABECERAS_EQUIPO], filasEquipo(visibles))
     descargarCSV('seguimiento-equipo.csv', csv)
   }
 
+  const exportarExcel = async () => {
+    setGenerando('excel')
+    try {
+      await descargarReporteExcel(entradaReporte())
+    } finally {
+      setGenerando(null)
+    }
+  }
+
+  const exportarPDF = async () => {
+    setGenerando('pdf')
+    try {
+      await descargarReportePDF(entradaReporte())
+    } finally {
+      setGenerando(null)
+    }
+  }
+
   const exportarDificiles = () => {
-    const csv = generarCSV(
-      ['Dominio', 'Precisión %', 'Correctas', 'Intentos'],
-      dificiles.map((d) => [
-        nombreDominio(d.domain_id),
-        d.precision_pct,
-        d.correctas,
-        d.intentos,
-      ])
-    )
+    const csv = generarCSV([...CABECERAS_DIFICIL], filasDificiles(dificiles))
     descargarCSV('contenido-dificil.csv', csv)
   }
 
@@ -242,14 +351,13 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
             ))}
           </div>
           {equipo && equipo.length > 0 && (
-            <button
-              type="button"
-              onClick={exportarEquipo}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600"
-            >
-              <Download className="size-4" />
-              Exportar CSV{filtro ? ' (filtro)' : ''}
-            </button>
+            <MenuExportar
+              etiquetaCSV={`CSV de la tabla${filtro ? ' (filtro)' : ''}`}
+              generando={generando}
+              onPDF={exportarPDF}
+              onExcel={exportarExcel}
+              onCSV={exportarCSV}
+            />
           )}
         </div>
       </div>

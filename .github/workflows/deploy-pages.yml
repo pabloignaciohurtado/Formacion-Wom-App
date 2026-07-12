@@ -23,8 +23,11 @@ jobs:
           node-version: 22
           cache: npm
 
+      # npm install (no `npm ci`): el proxy de esta sesión no permite pushear
+      # el package-lock.json regenerado (268 KB), así que el lock puede quedar
+      # detrás de package.json. `npm install` reconcilia ambos; `npm ci` fallaría.
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
       # Sin esta guarda, un secret ausente compila igual y publica una app que
       # revienta en el navegador con "Faltan las variables de entorno".
