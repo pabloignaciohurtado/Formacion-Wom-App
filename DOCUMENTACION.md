@@ -427,6 +427,12 @@ firmas, hitos) con seguimiento de cumplimiento.
 - **Asignación de metas** desde la UI: elegir dominio + % objetivo →
   `upsert` en `goals`; se muestra meta vs. avance real con semáforo de
   cumplimiento.
+- **Exportar la ficha** (menú "Exportar" en el encabezado): **PDF** branded
+  de una página (resumen + maestría por dominio + evolución semanal +
+  objetivos a reforzar + metas, con el título del objetivo resuelto) y
+  **Excel .xlsx** de cuatro hojas, para el 1:1 o el legajo. Usa los mismos
+  *builders* puros de `lib/reportes.ts` (`descargarFichaPDF` /
+  `descargarFichaExcel`) y el menú reutilizable `components/MenuExportar.tsx`.
 
 ---
 
@@ -563,7 +569,7 @@ src/
     srs.ts                   # Leitner + confianza (cajas, intervalos, maestría, 2×2)
     seguimiento.ts           # rangos de fecha, precisión por objetivo (analítica)
     csv.ts                   # generación/descarga de CSV en el cliente
-    reportes.ts              # reporte de equipo a PDF/Excel (builders puros + descargas diferidas)
+    reportes.ts              # reporte de equipo y ficha del relator a PDF/Excel (builders puros + descargas diferidas)
     busqueda.ts              # índice + búsqueda de dominios/ejercicios (buscador global)
     gamificacion.ts          # XP, niveles, ligas
     insignias.ts             # catálogo y evaluación de insignias
@@ -585,6 +591,7 @@ src/
     ContadorAnimado.tsx            # número que cuenta hacia arriba (ease-out)
     InsigniaModal.tsx               # modal de celebración (insignias y cambios de liga)
     ErrorBoundary.tsx                # captura errores de página sin tumbar la navegación
+    MenuExportar.tsx                  # menú "Exportar" reutilizable (opciones PDF/Excel/CSV)
     AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2) + menú Exportar (PDF/Excel/CSV)
     AdminActividades.tsx               # gestión de actividades obligatorias (admin)
 
@@ -595,13 +602,14 @@ src/
     Practica.tsx                 # sesión de práctica con SRS + confianza, XP y celebración
     Consultas.tsx                  # relator: enviar/ver consultas (+ EstadoConsulta compartido)
     Admin.tsx                       # panel admin (relatores, equipo, actividades, consultas)
-    FichaRelator.tsx                  # ficha individual con gráfico, drill al objetivo y metas
+    FichaRelator.tsx                  # ficha individual con gráfico, drill al objetivo, metas y export (PDF/Excel)
     Actividades.tsx                    # relator: actividades obligatorias
 
 design/                      # documentos de trabajo (no entran al bundle)
   revision-ux-benchmark.md   # benchmark UX/UI multidimensional (8 dims) + re-evaluaciones
   scorecard-dimensiones.html # scorecard visual de las 8 dimensiones
   metodologia-beneficios.md  # análisis pedagógico del contenido Club WOM
+  auditoria-bd-acciones.md   # auditoría de integridad + recuperabilidad del log de acciones
 
 .github/workflows/
   ci.yml                     # lint + tests (vitest) + build en cada PR
@@ -666,11 +674,12 @@ obligatorias con cumplimiento, **quick-start** ("Repasar ahora" salta directo
 a la sesión), Ejercicios en **grilla de bloques**, **buscador global** (paleta
 ⌘K que encuentra dominios y ejercicios), panel admin con analítica individual
 y de equipo **Nivel 2** (qué atender, rango de fechas, tendencia, drill al
-objetivo, **exportar el reporte a PDF/Excel/CSV**), pantalla núcleo con
-celebración depurada y accesibilidad
+objetivo, **exportar el reporte de equipo y la ficha del relator a
+PDF/Excel/CSV**), pantalla núcleo con celebración depurada y accesibilidad
 (aria-live/foco/AA), identidad visual WOM con modo oscuro, PWA instalable con
-práctica offline. Benchmark UX/UI multidimensional (§11): promedio **7.3/10**,
-7 de 8 dimensiones en 7.5+.
+práctica offline. **Integridad del log de acciones auditada y con respaldo
+automático semanal fuera de la base** (§17). Benchmark UX/UI multidimensional
+(§11): promedio **7.3/10**, 7 de 8 dimensiones en 7.5+.
 
 **Pendiente (decisión de negocio, no técnica):**
 - **Vínculo formación ↔ KPI del negocio** (dim. 7 del benchmark, hoy 3.0 —
@@ -685,5 +694,48 @@ práctica offline. Benchmark UX/UI multidimensional (§11): promedio **7.3/10**,
 
 **Ideas de continuidad** (no comprometidas): que el buscador guarde
 búsquedas/dominios recientes, push notifications reales, generación de
-preguntas asistida por IA desde el panel admin, soporte multi-idioma si WOM
-lo requiere en otras operaciones.
+preguntas asistida por IA desde el panel admin, export agregado por
+división/equipo, soporte multi-idioma si WOM lo requiere en otras operaciones.
+
+---
+
+## 17. Respaldo y recuperabilidad del log de acciones
+
+Auditoría del 2026-07-12 (detalle en `design/auditoria-bd-acciones.md`).
+
+**Qué es el log de acciones.** Cada acción de un relator queda en `attempts`
+(una fila por respuesta a un ejercicio) — es la fuente de verdad del XP y de
+toda la analítica. `activity_events` complementa con una bitácora de sesión
+(login/logout/acceso denegado). `srs_cards` es estado derivado de repaso, no
+un registro de acción.
+
+**Integridad (impecable).** 181 intentos al momento de la auditoría, 0 nulos
+en columnas clave, 0 IDs duplicados, 0 fechas futuras, 0 huérfanos; los
+perfiles calzan 1:1 con `auth.users`.
+
+**Inmutabilidad (auditoría a prueba de borrado).** Las tablas de registro
+(`attempts`, `activity_events`, `insignias_usuario`, `consultas`) **no tienen
+política RLS de `DELETE` ni de `UPDATE`**: solo `INSERT` y `SELECT`. Ni un
+usuario ni el admin pueden borrar o alterar un registro de acción desde la
+API. El admin lee todo (`is_admin()`), lo que permite exportar el historial
+completo (reportes de equipo/ficha en PDF/Excel/CSV).
+
+**Riesgo cubierto.** Todas las FK son `ON DELETE CASCADE` hacia el usuario
+(`auth.users → profiles → attempts / activity_events / insignias / consultas /
+goals`). En operación normal no pasa nada, porque la app da de baja con
+`activo = false` en vez de borrar; pero un borrado manual del usuario
+arrastraría su historial, y el plan Supabase no tiene backups automáticos ni
+point-in-time recovery. Único cron (`corte-semanal-ligas`) no borra nada.
+
+**Respaldo automático (copia inmutable fuera de la base).** Una tarea
+programada semanal (lunes 09:00 UTC ≈ 05:00 Chile) exporta todas las tablas de
+acciones a un `.zip` (CSV por tabla + `MANIFIESTO.txt` con conteos y rango de
+fechas) y lo (1) entrega por chat, (2) envía por correo, y (3) sube a **Google
+Drive**, a la carpeta del proyecto "Formación WOM - Respaldos de acciones".
+Para correrlo a demanda: pedir "genera el respaldo del log de acciones ahora".
+
+**Recomendaciones abiertas.** Guardar cada `.zip` en almacenamiento durable
+(ya se sube a Google Drive); opcionalmente el plan Pro de Supabase habilita
+backups diarios + PITR (con eso el respaldo semanal pasa a ser redundancia).
+No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompería la
+eliminación legítima de usuarios de prueba).
