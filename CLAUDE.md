@@ -101,6 +101,16 @@ por las malas.
   hacer doble `json.loads` (el `::text` lo deja doble-codificado). Luego CSV
   por tabla + zip.
 
+## Servidores MCP del proyecto
+
+- **Stitch (Google)** está declarado en `.mcp.json` (transporte HTTP,
+  `https://stitch.googleapis.com/mcp`). La API key **no está en el repo**:
+  se lee de la variable de entorno `STITCH_API_KEY`, que Pablo debe definir
+  en la configuración del entorno de Claude Code (Environment → variables
+  de entorno). Sin esa variable el servidor simplemente no conecta — no es
+  un bug. La key se obtiene en https://stitch.withgoogle.com (ajustes →
+  API key de Stitch).
+
 ## Restricciones de la sesión (no son bugs, son la plataforma)
 
 - El proxy de la sesión **bloquea escrituras a la configuración del
