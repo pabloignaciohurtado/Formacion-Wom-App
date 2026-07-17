@@ -155,6 +155,8 @@ todas las tablas.** 10 migraciones aplicadas, en orden:
 | `insignias_usuario` | Insignias obtenidas | PK compuesta `(user_id, insignia_id)`; el catálogo vive en el frontend |
 | `cortes_semanales` | Idempotencia del corte de ligas | PK `semana` (date); registra qué semanas ya se procesaron |
 | `activity_events` | Bitácora genérica | Heredada del esquema original, uso libre |
+| `materiales` | Biblioteca de materiales de capacitación | Archivo subido (`storage_path`, bucket `materiales`) **o** enlace externo (`url`) — nunca ambos (`check` de origen único); `tipo` (pdf/documento/presentación/imagen/video/enlace); `activo` (archivado suave) |
+| `actividad_materiales` | Qué materiales están adjuntos a qué actividad | Tabla puente N:N, PK compuesta `(actividad_id, material_id)` |
 
 ### 4.2 Funciones SQL (RPC)
 
@@ -372,14 +374,46 @@ Módulo para tareas asignadas por el equipo de formación (cursos externos,
 firmas, hitos) con seguimiento de cumplimiento.
 
 - **Admin** (`src/components/AdminActividades.tsx`): formulario para
-  publicar (título, descripción, enlace opcional, fecha límite opcional);
-  lista con **barra de cumplimiento X/Y** y los nombres de quienes ya la
-  completaron; "archivar" en vez de borrar (`activa=false`).
+  publicar (título, descripción, enlace opcional, fecha límite opcional,
+  **materiales adjuntos de la biblioteca**); lista con **barra de
+  cumplimiento X/Y** y los nombres de quienes ya la completaron; "archivar"
+  en vez de borrar (`activa=false`).
 - **Relator** (`src/pages/Actividades.tsx`): pendientes con semáforo de
-  fecha límite (ámbar ≤3 días, rojo vencida), enlace al material, botón
+  fecha límite (ámbar ≤3 días, rojo vencida), enlace al material y **chips
+  de los materiales adjuntos** (icono por tipo, abre archivo/enlace), botón
   "Marcar completada" (mini confetti), sección de completadas tachadas.
 - Contribuye a la insignia "Siempre al día" y es una de las señales del
   dashboard de equipo en Admin.
+
+### 8.1 Biblioteca de materiales (`src/components/AdminMateriales.tsx`)
+
+Sección para alojar distintos tipos de material de capacitación,
+reutilizable entre actividades — se sube o se referencia una vez y se
+adjunta a cuantas actividades haga falta, en vez de repetir el mismo
+enlace cada vez.
+
+- **Origen**: **archivo subido** (PDF, Word, PowerPoint/Excel o imagen,
+  máx. 20 MB — bucket privado `materiales` en Supabase Storage) o
+  **enlace externo** (video de YouTube/Vimeo/Drive, u otro enlace). Nunca
+  ambos: la tabla `materiales` tiene un `check` que exige exactamente uno
+  de `storage_path`/`url`. El tipo se infiere del mime al subir
+  (`inferirTipoPorMime`, `lib/materiales.ts`).
+- **Por qué 20 MB y no video subido**: el plan gratuito de Supabase da
+  1 GB de Storage total — un solo video lo agotaría. El video vive como
+  enlace externo (YouTube/Drive/Vimeo), no como archivo.
+- **Privacidad del archivo**: el bucket es privado; "Ver" pide una
+  `createSignedUrl` (60 s) en el momento del clic — la seguridad la da la
+  política RLS de `storage.objects`, no una URL pública adivinable.
+- **Quién sube**: admin y supervisor (`is_supervisor()`); un supervisor
+  solo puede archivar lo suyo, el admin cualquier material.
+- **Adjuntar a una actividad**: al crear una actividad en
+  `AdminActividades`, un checklist ofrece los materiales activos de la
+  biblioteca; la selección se guarda en `actividad_materiales` (tabla
+  puente N:N) junto con la actividad. Fallar al adjuntar no revierte la
+  actividad ya creada (a diferencia de los destinatarios, que si son
+  obligatorios) — es un enriquecimiento, no un requisito.
+- Probado con `src/lib/materiales.test.ts` (inferencia de tipo por mime,
+  validación de tamaño/formato, formato de tamaño legible).
 
 ---
 
@@ -570,6 +604,7 @@ src/
     seguimiento.ts           # rangos de fecha, precisión por objetivo (analítica)
     csv.ts                   # generación/descarga de CSV en el cliente
     reportes.ts              # reporte de equipo y ficha del relator a PDF/Excel (builders puros + descargas diferidas)
+    materiales.ts             # biblioteca de materiales: tipos, mimes admitidos, validación de archivo
     busqueda.ts              # índice + búsqueda de dominios/ejercicios (buscador global)
     gamificacion.ts          # XP, niveles, ligas
     insignias.ts             # catálogo y evaluación de insignias
@@ -579,7 +614,7 @@ src/
   data/
     contenido.ts             # catálogo de dominios/objetivos/ejercicios + categorías
     contenido.test.ts        # test de integridad del catálogo (vitest)
-    (reportes.test.ts en lib/ cubre los builders de export)
+    (reportes.test.ts y materiales.test.ts en lib/ cubren esos builders)
 
   components/
     Layout.tsx                # shell (sidebar/bottom-nav, header, tema, offline sync)
@@ -593,7 +628,8 @@ src/
     ErrorBoundary.tsx                # captura errores de página sin tumbar la navegación
     MenuExportar.tsx                  # menú "Exportar" reutilizable (opciones PDF/Excel/CSV)
     AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2) + menú Exportar (PDF/Excel/CSV)
-    AdminActividades.tsx               # gestión de actividades obligatorias (admin)
+    AdminMateriales.tsx                # biblioteca de materiales: subir archivo o agregar enlace, listar, archivar
+    AdminActividades.tsx                # gestión de actividades obligatorias (admin) + adjuntar materiales
 
   pages/
     Login.tsx / Registro.tsx / Recuperar.tsx / Restablecer.tsx / CuentaInactiva.tsx
@@ -670,12 +706,14 @@ por admin, catálogo de **13 dominios** con SRS Leitner, anti-copia y
 **aprendizaje basado en confianza** (2×2, detección del *seguro-pero-
 equivocado*), gamificación completa (XP/niveles/racha/ranking/**ligas por
 división + auto-competencia**/insignias/certificados), actividades
-obligatorias con cumplimiento, **quick-start** ("Repasar ahora" salta directo
-a la sesión), Ejercicios en **grilla de bloques**, **buscador global** (paleta
-⌘K que encuentra dominios y ejercicios), panel admin con analítica individual
-y de equipo **Nivel 2** (qué atender, rango de fechas, tendencia, drill al
-objetivo, **exportar el reporte de equipo y la ficha del relator a
-PDF/Excel/CSV**), pantalla núcleo con celebración depurada y accesibilidad
+obligatorias con cumplimiento y **biblioteca de materiales de capacitación**
+(§8.1 — archivo o enlace, adjuntable a cualquier actividad), **quick-start**
+("Repasar ahora" salta directo a la sesión), Ejercicios en **grilla de
+bloques**, **buscador global** (paleta ⌘K que encuentra dominios y
+ejercicios), panel admin con analítica individual y de equipo **Nivel 2**
+(qué atender, rango de fechas, tendencia, drill al objetivo, **exportar el
+reporte de equipo y la ficha del relator a PDF/Excel/CSV**), pantalla núcleo
+con celebración depurada y accesibilidad
 (aria-live/foco/AA), identidad visual WOM con modo oscuro, PWA instalable con
 práctica offline. **Integridad del log de acciones auditada y con respaldo
 automático semanal fuera de la base** (§17). Benchmark UX/UI multidimensional
