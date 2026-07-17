@@ -1,13 +1,15 @@
 import { m } from 'motion/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, ExternalLink, CalendarClock } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { ETIQUETAS_TIPO, ICONO_TIPO, type Material, type TipoMaterial } from '../lib/materiales'
 import { Boton, Esqueleto, MensajeError, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Actividad = Tables<'actividades'>
+type Adjunto = Tables<'actividad_materiales'>
 
 function EstadoLimite({ fecha }: { fecha: string | null }) {
   if (!fecha) return null
@@ -34,12 +36,14 @@ export default function Actividades() {
   const { user } = useAuth()
   const [actividades, setActividades] = useState<Actividad[] | null>(null)
   const [completadas, setCompletadas] = useState<Set<string>>(new Set())
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>([])
+  const [materiales, setMateriales] = useState<Material[]>([])
   const [error, setError] = useState<string | null>(null)
   const [marcando, setMarcando] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (!user) return
-    const [acts, hechas] = await Promise.all([
+    const [acts, hechas, adj, mats] = await Promise.all([
       supabase
         .from('actividades')
         .select('*')
@@ -49,14 +53,42 @@ export default function Actividades() {
         .from('actividades_completadas')
         .select('actividad_id')
         .eq('user_id', user.id),
+      supabase.from('actividad_materiales').select('*'),
+      supabase.from('materiales').select('*').eq('activo', true),
     ])
     setActividades(acts.data ?? [])
     setCompletadas(new Set((hechas.data ?? []).map((h) => h.actividad_id)))
+    setAdjuntos(adj.data ?? [])
+    setMateriales(mats.data ?? [])
   }, [user])
 
   useEffect(() => {
     void cargar()
   }, [cargar])
+
+  const materialesPorActividad = useMemo(() => {
+    const porId = Object.fromEntries(materiales.map((m) => [m.id, m]))
+    const mapa = new Map<string, Material[]>()
+    for (const a of adjuntos) {
+      const material = porId[a.material_id]
+      if (!material) continue
+      const lista = mapa.get(a.actividad_id) ?? []
+      lista.push(material)
+      mapa.set(a.actividad_id, lista)
+    }
+    return mapa
+  }, [adjuntos, materiales])
+
+  const abrirMaterial = async (material: Material) => {
+    if (material.storage_path) {
+      const { data } = await supabase.storage
+        .from('materiales')
+        .createSignedUrl(material.storage_path, 60)
+      if (data) window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    } else if (material.url) {
+      window.open(material.url, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   const marcarCompletada = async (actividad: Actividad) => {
     if (!user) return
@@ -128,6 +160,26 @@ export default function Actividades() {
                     </div>
                     {a.descripcion && (
                       <p className="mt-1 text-sm text-tinta-suave">{a.descripcion}</p>
+                    )}
+                    {(materialesPorActividad.get(a.id) ?? []).length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(materialesPorActividad.get(a.id) ?? []).map((mat) => {
+                          const Icono = ICONO_TIPO[(mat.tipo as TipoMaterial) ?? 'enlace']
+                          return (
+                            <button
+                              key={mat.id}
+                              type="button"
+                              onClick={() => void abrirMaterial(mat)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-wom-600/10 px-2.5 py-1 text-xs font-semibold text-wom-600"
+                              title={ETIQUETAS_TIPO[(mat.tipo as TipoMaterial) ?? 'enlace']}
+                            >
+                              <Icono className="size-3.5" />
+                              {mat.titulo}
+                              <ExternalLink className="size-3" />
+                            </button>
+                          )
+                        })}
+                      </div>
                     )}
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       <Boton

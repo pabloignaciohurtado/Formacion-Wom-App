@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminEquipo } from '../components/AdminEquipo'
+import { AdminMateriales } from '../components/AdminMateriales'
 import {
   etiquetaRol,
   puedeAsignar,
@@ -223,6 +224,8 @@ export default function Admin() {
       )}
 
       <AdminEquipo />
+
+      <AdminMateriales />
 
       <AdminActividades />
 

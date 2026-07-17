@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Search, Trash2 } from 'lucide-react'
+import { ExternalLink, Paperclip, Search, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { esAdmin } from '../lib/roles'
@@ -11,12 +11,14 @@ import {
   personasAsignables,
   type Alcance,
 } from '../lib/asignacion'
+import { ETIQUETAS_TIPO, ICONO_TIPO, type Material, type TipoMaterial } from '../lib/materiales'
 import { Boton, Campo, EstadoCarga, MensajeAviso, MensajeError, Tarjeta } from './ui'
 import type { Tables } from '../lib/database.types'
 
 type Actividad = Tables<'actividades'>
 type Completada = Tables<'actividades_completadas'>
 type Destinatario = Tables<'actividades_destinatarios'>
+type Adjunto = Tables<'actividad_materiales'>
 type Persona = Pick<Tables<'profiles'>, 'id' | 'nombre' | 'activo' | 'supervisor_id'>
 
 // Pantalla de asignación de módulos obligatorios. La usan el admin (en
@@ -32,6 +34,8 @@ export function AdminActividades() {
   const [actividades, setActividades] = useState<Actividad[] | null>(null)
   const [destinatarios, setDestinatarios] = useState<Destinatario[]>([])
   const [completadas, setCompletadas] = useState<Completada[]>([])
+  const [materiales, setMateriales] = useState<Material[]>([])
+  const [adjuntos, setAdjuntos] = useState<Adjunto[]>([])
 
   const [titulo, setTitulo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -39,17 +43,22 @@ export function AdminActividades() {
   const [fechaLimite, setFechaLimite] = useState('')
   const [alcance, setAlcance] = useState<Alcance | null>(null)
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
+  const [materialesSeleccion, setMaterialesSeleccion] = useState<Set<string>>(new Set())
   const [filtro, setFiltro] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
 
   const cargar = useCallback(async () => {
     if (!user) return
-    const [gente, acts, dest, hechas] = await Promise.all([
+    const [gente, acts, dest, hechas, mats, adj] = await Promise.all([
       supabase.from('profiles').select('id, nombre, activo, supervisor_id'),
       supabase.from('actividades').select('*').order('creada_en', { ascending: false }),
       supabase.from('actividades_destinatarios').select('*'),
       supabase.from('actividades_completadas').select('*'),
+      // Todos los materiales visibles (activos + propios archivados) para
+      // poder mostrar lo ya adjunto aunque luego se archive en la biblioteca.
+      supabase.from('materiales').select('*'),
+      supabase.from('actividad_materiales').select('*'),
     ])
     setPersonas(gente.data ?? [])
     // El admin gestiona todas; un supervisor, las que él asignó.
@@ -58,6 +67,8 @@ export function AdminActividades() {
     )
     setDestinatarios(dest.data ?? [])
     setCompletadas(hechas.data ?? [])
+    setMateriales(mats.data ?? [])
+    setAdjuntos(adj.data ?? [])
   }, [user, soyAdmin])
 
   useEffect(() => {
@@ -84,6 +95,53 @@ export function AdminActividades() {
     const q = filtro.trim().toLowerCase()
     return q ? asignables.filter((p) => p.nombre.toLowerCase().includes(q)) : asignables
   }, [asignables, filtro])
+
+  const materialesPorId = useMemo(
+    () => Object.fromEntries(materiales.map((m) => [m.id, m])),
+    [materiales]
+  )
+  // Solo lo activo tiene sentido ofrecer al crear una actividad nueva; lo
+  // archivado sigue mostrándose en actividades que ya lo tenían adjunto.
+  const materialesDisponibles = useMemo(
+    () => materiales.filter((m) => m.activo),
+    [materiales]
+  )
+  const materialesPorActividad = useMemo(() => {
+    const mapa = new Map<string, Material[]>()
+    for (const adj of adjuntos) {
+      const material = materialesPorId[adj.material_id]
+      if (!material) continue
+      const lista = mapa.get(adj.actividad_id) ?? []
+      lista.push(material)
+      mapa.set(adj.actividad_id, lista)
+    }
+    return mapa
+  }, [adjuntos, materialesPorId])
+
+  const abrirMaterial = async (material: Material) => {
+    setError(null)
+    if (material.storage_path) {
+      const { data, error: urlError } = await supabase.storage
+        .from('materiales')
+        .createSignedUrl(material.storage_path, 60)
+      if (urlError || !data) {
+        setError(urlError?.message ?? 'No se pudo generar el enlace de descarga.')
+        return
+      }
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    } else if (material.url) {
+      window.open(material.url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const alternarMaterial = (id: string) => {
+    setMaterialesSeleccion((prev) => {
+      const nueva = new Set(prev)
+      if (nueva.has(id)) nueva.delete(id)
+      else nueva.add(id)
+      return nueva
+    })
+  }
 
   const alternarSeleccion = (id: string) => {
     setSeleccion((prev) => {
@@ -138,12 +196,26 @@ export function AdminActividades() {
       }
     }
 
+    if (materialesSeleccion.size > 0) {
+      const { error: matError } = await supabase.from('actividad_materiales').insert(
+        Array.from(materialesSeleccion).map((material_id) => ({
+          actividad_id: creada.id,
+          material_id,
+        }))
+      )
+      // A diferencia de los destinatarios, un material adjunto es un extra:
+      // si falla no tiene sentido borrar la actividad ya publicada, solo
+      // avisar para que se reintente agregarlo.
+      if (matError) setError(`Actividad creada, pero no se pudieron adjuntar los materiales: ${matError.message}`)
+    }
+
     setCreando(false)
     setTitulo('')
     setDescripcion('')
     setEnlace('')
     setFechaLimite('')
     setSeleccion(new Set())
+    setMaterialesSeleccion(new Set())
     setFiltro('')
     void cargar()
   }
@@ -221,6 +293,35 @@ export function AdminActividades() {
               value={fechaLimite}
               onChange={(e) => setFechaLimite(e.target.value)}
             />
+
+            {materialesDisponibles.length > 0 && (
+              <fieldset className="sm:col-span-2">
+                <legend className="flex items-center gap-1.5 text-sm font-semibold text-tinta">
+                  <Paperclip className="size-4" />
+                  Materiales adjuntos ({materialesSeleccion.size} de{' '}
+                  {materialesDisponibles.length})
+                </legend>
+                <ul className="mt-1.5 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-niebla p-2">
+                  {materialesDisponibles.map((m) => {
+                    const Icono = ICONO_TIPO[(m.tipo as TipoMaterial) ?? 'enlace']
+                    return (
+                      <li key={m.id}>
+                        <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors hover:bg-niebla">
+                          <input
+                            type="checkbox"
+                            checked={materialesSeleccion.has(m.id)}
+                            onChange={() => alternarMaterial(m.id)}
+                            className="size-4 accent-wom-600"
+                          />
+                          <Icono className="size-4 shrink-0 text-tinta-suave" />
+                          <span className="truncate">{m.titulo}</span>
+                        </label>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </fieldset>
+            )}
 
             <fieldset className="sm:col-span-2">
               <legend className="text-sm font-semibold text-tinta">
@@ -366,6 +467,27 @@ export function AdminActividades() {
                         .map((d) => nombresPorId[d.user_id] ?? 'desconocido')
                         .join(', ')}
                     </p>
+                  )}
+
+                  {(materialesPorActividad.get(a.id) ?? []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(materialesPorActividad.get(a.id) ?? []).map((m) => {
+                        const Icono = ICONO_TIPO[(m.tipo as TipoMaterial) ?? 'enlace']
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => void abrirMaterial(m)}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-niebla px-2.5 py-1 text-xs font-semibold text-tinta-suave transition-colors hover:text-wom-600"
+                            title={ETIQUETAS_TIPO[(m.tipo as TipoMaterial) ?? 'enlace']}
+                          >
+                            <Icono className="size-3.5" />
+                            {m.titulo}
+                            <ExternalLink className="size-3" />
+                          </button>
+                        )
+                      })}
+                    </div>
                   )}
 
                   <div className="mt-3 flex items-center gap-3">
