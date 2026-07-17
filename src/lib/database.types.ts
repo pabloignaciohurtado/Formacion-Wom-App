@@ -121,6 +121,39 @@ export type Database = {
           },
         ]
       }
+      actividad_materiales: {
+        Row: {
+          actividad_id: string
+          agregado_en: string
+          material_id: string
+        }
+        Insert: {
+          actividad_id: string
+          agregado_en?: string
+          material_id: string
+        }
+        Update: {
+          actividad_id?: string
+          agregado_en?: string
+          material_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividad_materiales_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividad_materiales_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materiales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_events: {
         Row: {
           detalle: string | null
@@ -318,6 +351,56 @@ export type Database = {
           {
             foreignKeyName: "insignias_usuario_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materiales: {
+        Row: {
+          activo: boolean
+          creado_en: string
+          creado_por: string | null
+          descripcion: string
+          id: string
+          nombre_archivo: string | null
+          storage_path: string | null
+          tamano_bytes: number | null
+          tipo: string
+          titulo: string
+          url: string | null
+        }
+        Insert: {
+          activo?: boolean
+          creado_en?: string
+          creado_por?: string | null
+          descripcion?: string
+          id?: string
+          nombre_archivo?: string | null
+          storage_path?: string | null
+          tamano_bytes?: number | null
+          tipo: string
+          titulo: string
+          url?: string | null
+        }
+        Update: {
+          activo?: boolean
+          creado_en?: string
+          creado_por?: string | null
+          descripcion?: string
+          id?: string
+          nombre_archivo?: string | null
+          storage_path?: string | null
+          tamano_bytes?: number | null
+          tipo?: string
+          titulo?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materiales_creado_por_fkey"
+            columns: ["creado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

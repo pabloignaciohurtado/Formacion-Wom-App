@@ -39,9 +39,22 @@ por las malas.
   (menú "Exportar" reutilizable `components/MenuExportar.tsx` + `lib/reportes.ts`;
   jspdf y write-excel-file en carga diferida, fuera del bundle inicial), y una
   **auditoría de integridad + respaldo automático del log de acciones**
-  (ver sección "Respaldo" más abajo y `design/auditoria-bd-acciones.md`).
+  (ver sección "Respaldo" más abajo y `design/auditoria-bd-acciones.md`), y
+  una **biblioteca de materiales de capacitación** (tabla `materiales` +
+  bucket privado `materiales` en Storage, componente
+  `components/AdminMateriales.tsx`) adjuntable a cualquier actividad
+  obligatoria vía `actividad_materiales` (N:N) — ver DOCUMENTACION.md §8.1.
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
   scorecard en `design/scorecard-dimensiones.html`).
+
+  > Nota de higiene: la §4 de `DOCUMENTACION.md` (lista numerada de
+  > migraciones) quedó desactualizada antes de esta sesión — el proyecto
+  > tiene 19 migraciones reales pero la lista numerada solo muestra 10
+  > (le faltan las de roles ejecutivo/supervisor/alcance, ligas por
+  > división, corte semanal vía `pg_cron`, etc., de la sesión del
+  > 2026-07-10). No se corrigió aquí para no mezclar un audit de docs no
+  > pedido con esta feature; si Pablo pide "actualiza la documentación"
+  > de nuevo, reconciliar esa lista contra `list_migrations` primero.
 
 ## Cómo se trabaja en este repo
 
@@ -184,6 +197,14 @@ por las malas.
 - **Salida grande de `execute_sql`** se guarda a un `.txt` en `tool-results/`
   en vez de mostrarse; procesarla con Python (`json.load` del archivo → `['result']`
   → regex del array → doble `json.loads`), no pegarla al contexto.
+- **Bucket de Storage privado + descarga con `createSignedUrl`**: el bucket
+  `materiales` no es público (`public: false`); "Ver" un archivo pide una
+  URL firmada en el momento del clic (`supabase.storage.from('materiales').
+  createSignedUrl(path, 60)`), nunca una URL fija — la RLS de
+  `storage.objects` es la que autoriza, no la opacidad de la ruta. Los tipos
+  de `Database` (`database.types.ts`) se mantienen a mano igual que el resto
+  del esquema; `storage.buckets`/`storage.objects` no se tipan ahí (son
+  schema `storage`, fuera de `public`).
 
 ## Pendientes de decisión humana (no técnicos)
 
