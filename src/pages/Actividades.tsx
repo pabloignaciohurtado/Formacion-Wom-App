@@ -1,15 +1,34 @@
 import { m } from 'motion/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CheckCircle2, ExternalLink, CalendarClock } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
+import { DOMINIOS } from '../data/contenido'
 import { ETIQUETAS_TIPO, ICONO_TIPO, type Material, type TipoMaterial } from '../lib/materiales'
+import {
+  ETIQUETAS_ESTADO_CICLO,
+  ETIQUETAS_TIPO_CICLO,
+  ICONO_TIPO_CICLO,
+  diasHastaLimite,
+  estadoCiclo,
+  porcentajeAvance,
+  type Ciclo,
+  type ProgresoCiclo,
+  type TipoCiclo,
+} from '../lib/reentrenamiento'
 import { Boton, Esqueleto, MensajeError, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
 
 type Actividad = Tables<'actividades'>
 type Adjunto = Tables<'actividad_materiales'>
+
+const CLASES_ESTADO: Record<string, string> = {
+  en_curso: 'bg-wom-600/10 text-wom-600',
+  completado: 'bg-exito/10 text-exito-texto',
+  incompleto: 'bg-red-100 text-red-700',
+}
 
 function EstadoLimite({ fecha }: { fecha: string | null }) {
   if (!fecha) return null
@@ -38,12 +57,14 @@ export default function Actividades() {
   const [completadas, setCompletadas] = useState<Set<string>>(new Set())
   const [adjuntos, setAdjuntos] = useState<Adjunto[]>([])
   const [materiales, setMateriales] = useState<Material[]>([])
+  const [ciclos, setCiclos] = useState<Ciclo[]>([])
+  const [progresos, setProgresos] = useState<ProgresoCiclo[]>([])
   const [error, setError] = useState<string | null>(null)
   const [marcando, setMarcando] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
     if (!user) return
-    const [acts, hechas, adj, mats] = await Promise.all([
+    const [acts, hechas, adj, mats, cics, prog] = await Promise.all([
       supabase
         .from('actividades')
         .select('*')
@@ -55,16 +76,30 @@ export default function Actividades() {
         .eq('user_id', user.id),
       supabase.from('actividad_materiales').select('*'),
       supabase.from('materiales').select('*').eq('activo', true),
+      supabase.from('ciclos_capacitacion').select('*').eq('activo', true),
+      supabase.rpc('progreso_ciclos_capacitacion'),
     ])
     setActividades(acts.data ?? [])
     setCompletadas(new Set((hechas.data ?? []).map((h) => h.actividad_id)))
     setAdjuntos(adj.data ?? [])
     setMateriales(mats.data ?? [])
+    setCiclos(cics.data ?? [])
+    // Solo el propio avance: el RPC devuelve también al equipo cuando quien
+    // llama es supervisor/admin, pero esta pantalla es "lo mío".
+    setProgresos((prog.data ?? []).filter((p) => p.user_id === user.id))
   }, [user])
 
   useEffect(() => {
     void cargar()
   }, [cargar])
+
+  const misCiclos = useMemo(() => {
+    const progresoPorCiclo = new Map(progresos.map((p) => [p.ciclo_id, p]))
+    return ciclos
+      .map((c) => ({ ciclo: c, progreso: progresoPorCiclo.get(c.id) }))
+      .filter((x) => x.progreso !== undefined)
+      .sort((a, b) => a.ciclo.fecha_limite.localeCompare(b.ciclo.fecha_limite))
+  }, [ciclos, progresos])
 
   const materialesPorActividad = useMemo(() => {
     const porId = Object.fromEntries(materiales.map((m) => [m.id, m]))
@@ -116,11 +151,10 @@ export default function Actividades() {
 
   return (
     <section className="mx-auto max-w-2xl">
-      <h1 className="text-2xl font-extrabold lg:text-3xl">
-        Actividades obligatorias
-      </h1>
+      <h1 className="text-2xl font-extrabold lg:text-3xl">Actividades</h1>
       <p className="mt-1 text-tinta-suave">
-        Tareas asignadas por el equipo de formación. Márcalas al completarlas.
+        Tareas asignadas por el equipo de formación y tus ciclos de
+        re-entrenamiento activos.
       </p>
 
       {error && (
@@ -128,6 +162,69 @@ export default function Actividades() {
           <MensajeError>{error}</MensajeError>
         </div>
       )}
+
+      {misCiclos.length > 0 && (
+        <>
+          <h2 className="mt-6 text-lg font-bold">Ciclos de re-entrenamiento</h2>
+          <ul className="mt-3 space-y-3">
+            {misCiclos.map(({ ciclo, progreso }) => {
+              if (!progreso) return null
+              const dominio = DOMINIOS.find((d) => d.id === ciclo.dominio_id)
+              const IconoTipo = ICONO_TIPO_CICLO[(ciclo.tipo as TipoCiclo) ?? 'recertificacion']
+              const estado = estadoCiclo(ciclo.fecha_limite, progreso.cumplida)
+              const avance = porcentajeAvance(progreso.intentos, ciclo.meta_ejercicios)
+              const dias = diasHastaLimite(ciclo.fecha_limite)
+              return (
+                <li key={ciclo.id}>
+                  <Tarjeta>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <IconoTipo className="size-4 shrink-0 text-wom-600" />
+                      <h3 className="flex-1 font-bold">{ciclo.titulo}</h3>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${CLASES_ESTADO[estado]}`}
+                      >
+                        {ETIQUETAS_ESTADO_CICLO[estado]}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-tinta-suave">
+                      {ETIQUETAS_TIPO_CICLO[(ciclo.tipo as TipoCiclo) ?? 'recertificacion']} ·{' '}
+                      {dominio?.icono} {dominio?.titulo ?? ciclo.dominio_id}
+                    </p>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-niebla">
+                        <div
+                          className="h-full rounded-full bg-wom-600"
+                          style={{ width: `${avance}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-tinta-suave">
+                        {progreso.intentos}/{ciclo.meta_ejercicios} ejercicios
+                      </span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs text-tinta-suave">
+                        {dias < 0
+                          ? 'venció'
+                          : `vence en ${dias} día${dias === 1 ? '' : 's'}`}
+                      </span>
+                      {estado !== 'completado' && dominio && (
+                        <Link
+                          to={`/ejercicios/${dominio.id}`}
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+                        >
+                          Practicar {dominio.titulo} <ExternalLink className="size-3.5" />
+                        </Link>
+                      )}
+                    </div>
+                  </Tarjeta>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+
+      <h2 className="mt-8 text-lg font-bold">Actividades obligatorias</h2>
 
       {!actividades ? (
         <div className="mt-6 space-y-3">
