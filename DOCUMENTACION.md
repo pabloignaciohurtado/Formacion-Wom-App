@@ -37,7 +37,7 @@ Dos roles:
 │   Navegador (SPA)    │◄──────►│   Supabase (BaaS)         │
 │   React 19 + Vite     │  REST  │   - Postgres + RLS         │
 │   PWA / offline queue │  Auth  │   - Auth (email/password)  │
-└─────────────────┐           │   - Funciones SQL (RPC)    │
+└──────────┬───────────┘        │   - Funciones SQL (RPC)    │
            │                     └────────────────────────────┘
            │ build estático
            ▼
