@@ -32,20 +32,11 @@ Dos roles:
 
 ## 2. Arquitectura
 
-```
-┌─────────────────────┐        ┌────────────────────────┐
-│   Navegador (SPA)    │◄──────►│   Supabase (BaaS)         │
-│   React 19 + Vite     │  REST  │   - Postgres + RLS         │
-│   PWA / offline queue │  Auth  │   - Auth (email/password)  │
-└──────────┬───────────┘        │   - Funciones SQL (RPC)    │
-           │                     └────────────────────────┘
-           │ build estático
-           ▼
-┌────────────────────────┐
-│   GitHub Pages         │  ← publicado por GitHub Actions
-│   (rama gh-pages)       │     en cada push a main
-└────────────────────────┘
-```
+SPA en React que habla directo con Supabase (Postgres + RLS + Auth + RPC)
+por la clave pública `anon`; no hay backend propio ni servidor de
+aplicación. El build estático de Vite se publica en GitHub Pages (rama
+`gh-pages`), desplegado automáticamente por GitHub Actions en cada push a
+`main`.
 
 **No hay backend propio.** El frontend habla directo con Supabase (Postgres
 + Auth + funciones RPC) usando la clave pública (`anon`); toda la seguridad
@@ -869,5 +860,5 @@ Para correrlo a demanda: pedir "genera el respaldo del log de acciones ahora".
 **Recomendaciones abiertas.** Guardar cada `.zip` en almacenamiento durable
 (ya se sube a Google Drive); opcionalmente el plan Pro de Supabase habilita
 backups diarios + PITR (con eso el respaldo semanal pasa a ser redundancia).
-No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompeíara la
+No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompe la
 eliminación legítima de usuarios de prueba).
