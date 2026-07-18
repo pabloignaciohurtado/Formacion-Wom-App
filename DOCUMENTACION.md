@@ -33,18 +33,18 @@ Dos roles:
 ## 2. Arquitectura
 
 ```
-┌─────────────────────┐        ┌──────────────────────────┐
+┌───────────────────────┐        ┌────────────────────────────┐
 │   Navegador (SPA)    │◄──────►│   Supabase (BaaS)         │
 │   React 19 + Vite     │  REST  │   - Postgres + RLS         │
 │   PWA / offline queue │  Auth  │   - Auth (email/password)  │
-└──────────┬───────────┘        │   - Funciones SQL (RPC)    │
-           │                     └──────────────────────────┘
+└─────────────────┐           │   - Funciones SQL (RPC)    │
+           │                     └────────────────────────────┘
            │ build estático
            ▼
-┌──────────────────────┐
+┌──────────────────┐
 │   GitHub Pages         │  ← publicado por GitHub Actions
 │   (rama gh-pages)       │     en cada push a main
-└──────────────────────┘
+└──────────────────┘
 ```
 
 **No hay backend propio.** El frontend habla directo con Supabase (Postgres
@@ -356,6 +356,19 @@ se practicó hoy o ayer. Se muestra con ícono 🔥 en el Panel.
   semana.
 - Privacidad: ambas funciones exponen únicamente `nombre` (y `liga`/`xp`),
   nunca `email`.
+- **Pantalla propia** (`src/pages/Liga.tsx`, ruta `/liga`, ítem de menú con
+  ícono de trofeo, junto a Panel/Ejercicios/Actividades/Consultas): aquí
+  viven el ranking completo por división, los héroes de la semana y la
+  auto-competencia semanal (§7.4). Se separó del Panel (`src/pages/Panel.tsx`)
+  en 2026-07-18 porque el Panel había ido acumulando demasiadas secciones
+  (nivel, métricas, héroes, insignias, ranking completo) y el
+  ranking/posiciones necesitaban su propio espacio en vez de competir por
+  atención con el resto. El Panel se quedó con lo del día a día — saludo,
+  nivel/XP, racha, repasos pendientes, XP, botón de practicar, vitrina de
+  insignias — más una tarjeta compacta de "tu liga" (posición + enlace
+  "Ver liga completa") a modo de teaser hacia `/liga`. `heroes_semana()`
+  se sigue consultando también desde el Panel (sin renderizarse ahí) porque
+  alimenta la insignia "Héroe de la Semana".
 
 ### 7.4 Ligas semanales (estilo Duolingo)
 
@@ -369,9 +382,14 @@ Al primer acceso de cada semana, `asegurar_corte_semanal()`:
   efecto (verificado en pruebas).
 - El cambio de liga se anuncia con un modal de celebración (mismo
   componente que las insignias) comparando la liga actual con la última
-  vista guardada en `localStorage` del dispositivo.
+  vista guardada en `localStorage` del dispositivo; se dispara desde el
+  Panel (es la pantalla de entrada) pero es independiente de dónde se
+  muestre el ranking.
 - `liga` está protegida por el mismo trigger que protege `role`/`activo`:
   un usuario no puede subirse de liga escribiendo directo a la API.
+- **Auto-competencia** (`mi_progreso_semanal()`, `deltaSemanal` en
+  `lib/gamificacion.ts`): tu semana en curso contra tu propia semana
+  anterior al mismo punto — vive en `/liga`, junto al ranking.
 
 ### 7.5 Insignias (`src/lib/insignias.ts`)
 
@@ -702,7 +720,8 @@ src/
 
   pages/
     Login.tsx / Registro.tsx / Recuperar.tsx / Restablecer.tsx / CuentaInactiva.tsx
-    Panel.tsx                 # dashboard: nivel, racha, XP, ranking, héroes, insignias
+    Panel.tsx                 # dashboard del día a día: nivel/XP, racha, repasos, insignias, teaser de liga
+    Liga.tsx                   # ranking completo por división, héroes de la semana, auto-competencia
     Ejercicios.tsx             # categorías en grilla de bloques → dominios → practicar
     Practica.tsx                 # sesión de práctica con SRS + confianza, XP y celebración
     Consultas.tsx                  # relator: enviar/ver consultas (+ EstadoConsulta compartido)
@@ -779,7 +798,9 @@ obligatorias con cumplimiento y **biblioteca de materiales de capacitación**
 (§8.1 — archivo o enlace, adjuntable a cualquier actividad), **ciclos de
 re-entrenamiento** (§8.2 — recertificación periódica, cambio de producto o
 procedimiento, refuerzo por baja precisión, con avance visible para
-ejecutivo, supervisor y en la ficha individual), **quick-start**
+ejecutivo, supervisor y en la ficha individual), **pantalla "Liga" propia**
+(§7.3 — ranking completo, héroes de la semana y auto-competencia separados
+del Panel, que quedó simplificado al día a día), **quick-start**
 ("Repasar ahora" salta directo a la sesión), Ejercicios en **grilla de
 bloques**, **buscador global** (paleta ⌘K que encuentra dominios y
 ejercicios), panel admin con analítica individual y de equipo **Nivel 2**
@@ -848,5 +869,5 @@ Para correrlo a demanda: pedir "genera el respaldo del log de acciones ahora".
 **Recomendaciones abiertas.** Guardar cada `.zip` en almacenamiento durable
 (ya se sube a Google Drive); opcionalmente el plan Pro de Supabase habilita
 backups diarios + PITR (con eso el respaldo semanal pasa a ser redundancia).
-No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompería la
+No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompeía la
 eliminación legítima de usuarios de prueba).
