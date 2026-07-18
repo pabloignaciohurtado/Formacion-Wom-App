@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
+import { AdminCiclosCapacitacion } from '../components/AdminCiclosCapacitacion'
 import { AdminEquipo } from '../components/AdminEquipo'
 import { AdminMateriales } from '../components/AdminMateriales'
 import {
@@ -228,6 +229,8 @@ export default function Admin() {
       <AdminMateriales />
 
       <AdminActividades />
+
+      <AdminCiclosCapacitacion />
 
       <h2 className="mt-8 text-lg font-bold">Consultas</h2>
       {!consultas ? (
