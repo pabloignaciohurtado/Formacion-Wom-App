@@ -21,6 +21,7 @@ const Registro = lazy(() => import('./pages/Registro'))
 const Recuperar = lazy(() => import('./pages/Recuperar'))
 const Restablecer = lazy(() => import('./pages/Restablecer'))
 const Panel = lazy(() => import('./pages/Panel'))
+const Liga = lazy(() => import('./pages/Liga'))
 const Ejercicios = lazy(() => import('./pages/Ejercicios'))
 const Practica = lazy(() => import('./pages/Practica'))
 const Actividades = lazy(() => import('./pages/Actividades'))
@@ -53,6 +54,7 @@ export default function App() {
               <Route element={<ProtectedRoute />}>
                 <Route element={<Layout />}>
                   <Route path="/" element={<Panel />} />
+                  <Route path="/liga" element={<Liga />} />
                   <Route path="/ejercicios" element={<Ejercicios />} />
                   <Route path="/ejercicios/:dominioId" element={<Practica />} />
                   {/* Repaso directo de todos los pendientes, sin selector. */}
