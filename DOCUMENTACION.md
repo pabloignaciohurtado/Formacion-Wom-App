@@ -123,7 +123,7 @@ ciclo de carga.
 ## 4. Modelo de datos (Supabase / Postgres)
 
 Proyecto Supabase: `formacion-wom` (`jgtrfrfolcfpvzbsiuka`). **RLS activo en
-todas las tablas.** 10 migraciones aplicadas, en orden:
+todas las tablas.** 20 migraciones aplicadas, en orden:
 
 1. `endurecer_funciones_security_definer`
 2. `proteger_campos_administrativos_perfil`
@@ -132,9 +132,19 @@ todas las tablas.** 10 migraciones aplicadas, en orden:
 5. `insignias_usuario`
 6. `ligas_semanales`
 7. `analytics_admin`
-8. `ligas_por_division_y_autocompetencia` — ranking por división y auto-competencia
-9. `intentos_con_confianza` — columna `attempts.confianza` (SRS basado en confianza)
-10. `analitica_jefaturas_nivel2` — rango de fechas + tendencia del equipo
+8. `rls_scope_authenticated_e_initplan` — endurecimiento de rendimiento de RLS (`(select auth.uid())` en vez de `auth.uid()` directo)
+9. `corte_semanal_por_pg_cron` — corte de ligas automático vía `pg_cron`, no solo al primer acceso de la semana
+10. `roles_ejecutivo_supervisor_y_asignacion_con_alcance` — los tres roles reales (ejecutivo/supervisor/admin) y el alcance de actividades (`todos`/`equipo`/`persona`)
+11. `liga_por_puntaje_semanal` — el ascenso/descenso de liga pasa a basarse en un puntaje semanal, no solo XP
+12. `desempates_del_puntaje_semanal` — criterios de desempate del puntaje
+13. `dia_activo_exige_tres_intentos` — un día solo cuenta como "activo" con ≥3 intentos (evita gamear la racha)
+14. `supervisores_ven_su_equipo` — RLS para que un supervisor lea el equipo que le reporta
+15. `destinatarios_sin_recursion` — corrige una política RLS recursiva en destinatarios de actividades
+16. `ligas_por_division_y_autocompetencia` — ranking por división y auto-competencia
+17. `intentos_con_confianza` — columna `attempts.confianza` (SRS basado en confianza)
+18. `analitica_jefaturas_nivel2` — rango de fechas + tendencia del equipo
+19. `biblioteca_de_materiales` — tabla `materiales` + bucket privado + `actividad_materiales`
+20. `ciclos_de_capacitacion` — tabla `ciclos_capacitacion` + `ciclos_capacitacion_destinatarios` + RPC `progreso_ciclos_capacitacion()`
 
 > Cada migración con cambio de datos/RLS tiene su `.sql` de rollback en
 > `docs/` y se verificó E2E contra la base (transacción con rollback o
@@ -157,6 +167,8 @@ todas las tablas.** 10 migraciones aplicadas, en orden:
 | `activity_events` | Bitácora genérica | Heredada del esquema original, uso libre |
 | `materiales` | Biblioteca de materiales de capacitación | Archivo subido (`storage_path`, bucket `materiales`) **o** enlace externo (`url`) — nunca ambos (`check` de origen único); `tipo` (pdf/documento/presentación/imagen/video/enlace); `activo` (archivado suave) |
 | `actividad_materiales` | Qué materiales están adjuntos a qué actividad | Tabla puente N:N, PK compuesta `(actividad_id, material_id)` |
+| `ciclos_capacitacion` | Ciclos de re-entrenamiento (recertificación, cambio de producto, refuerzo) | `dominio_id` (texto, catálogo), `tipo`, `meta_ejercicios`, `fecha_limite`, `alcance` (mismo enum que actividades); sin columna de estado (se deriva); `activo` (archivado suave) |
+| `ciclos_capacitacion_destinatarios` | A quién se le abrió cada ciclo | Tabla puente N:N, PK compuesta `(ciclo_id, user_id)`; vacía cuando `alcance='todos'` |
 
 ### 4.2 Funciones SQL (RPC)
 
@@ -176,6 +188,7 @@ Todas con `search_path` fijo (`public`) para evitar *search_path hijacking*.
 | `resumen_equipo(desde, hasta)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Ficha resumida de cada relator (supervisor: solo su equipo): XP, precisión, última actividad, obligatorias pendientes. Params `desde`/`hasta` opcionales (null = todo) para acotar el período |
 | `precision_por_dominio(desde, hasta)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Precisión agregada del equipo por dominio (≥5 intentos) — detecta contenido difícil. Acepta el mismo rango de fechas opcional |
 | `tendencia_equipo(semanas)` | `SECURITY DEFINER`, guard `is_admin()`/supervisor | Serie temporal (volumen + precisión) de las últimas N semanas del equipo — responde "¿mejora o empeora?" |
+| `progreso_ciclos_capacitacion()` | `SECURITY DEFINER`, solo `authenticated` | Avance por persona en cada ciclo de re-entrenamiento visible para quien llama (uno mismo, y si es supervisor/admin, también su equipo) — mismo motivo que `resumen_equipo`: `attempts` es solo-propio y un supervisor no puede leerlo directo |
 
 ### 4.3 Políticas RLS (resumen)
 
@@ -187,6 +200,16 @@ Todas con `search_path` fijo (`public`) para evitar *search_path hijacking*.
 - **`insignias_usuario`**: cada quien inserta/lee lo propio; admin lee todo. Verificado con un test E2E real: un usuario no puede otorgarse insignias a nombre de otro (bloqueado por RLS).
 - **`goals`**: lectura propia o admin; escritura (`ALL`) solo admin.
 - **`cortes_semanales`**: lectura para todo `authenticated` (necesaria para que el cliente decida si llamar al RPC de corte); sin escritura directa, solo vía la función `SECURITY DEFINER`.
+- **`ciclos_capacitacion`**: lectura si `alcance='todos'`, si lo creó quien pregunta, si es admin, o si es destinatario; insert solo `is_supervisor()` (incluye admin); update/delete solo admin o quien lo creó. **`ciclos_capacitacion_destinatarios`**: mismo patrón que `actividades_destinatarios` — un supervisor solo puede agregar gente de su propio equipo (`es_de_mi_equipo`) a un ciclo que él mismo creó.
+
+> Nota de higiene (2026-07-18): esta sección (§4.3) describe políticas
+> previas a la migración `roles_ejecutivo_supervisor_y_asignacion_con_alcance`
+> (2026-07-10) para `actividades`/`actividades_completadas` — hoy el alcance
+> real es más granular que "lectura para todo `authenticated`" (ver la
+> política real de `actividades_select` citada en el commit de esta feature).
+> No se corrigió aquí para no mezclar un audit de RLS no pedido con esta
+> entrega; si Pablo pide "revisa que la documentación de RLS esté al día",
+> reconciliar contra `pg_policies` primero.
 
 ### 4.4 Tipos TypeScript
 
@@ -310,7 +333,7 @@ en el service worker; ranking, actividades y consultas requieren red.
 ## 7. Gamificación
 
 Diseñada tras un benchmark explícito contra Axonify, SC Training, Qstream,
-TalentCards y las mecánicas de Duolingo (ver §11).
+TalentCards y las mecánicas públicas de Duolingo (ver §11).
 
 ### 7.1 XP y niveles (`src/lib/gamificacion.ts`)
 
@@ -414,6 +437,50 @@ enlace cada vez.
   obligatorios) — es un enriquecimiento, no un requisito.
 - Probado con `src/lib/materiales.test.ts` (inferencia de tipo por mime,
   validación de tamaño/formato, formato de tamaño legible).
+
+### 8.2 Ciclos de re-entrenamiento (`src/components/AdminCiclosCapacitacion.tsx`)
+
+Análisis de coherencia formación/re-entrenamiento
+(`design/coherencia-formacion-reentrenamiento.md`): la app resolvía bien la
+formación inicial (SRS, gamificación, actividades) pero no tenía forma de
+modelar recapacitación continua — sin ciclo temporal, sin distinguir un
+cambio puntual de producto de una recertificación periódica. Este módulo
+cierra esa brecha.
+
+- **Qué es**: un ciclo abre una ventana de práctica dirigida — un `dominio`
+  del catálogo, una `meta_ejercicios`, una `fecha_limite` — sobre quien
+  corresponda. Tres `tipo`: **recertificación periódica**, **cambio de
+  producto o procedimiento** (reactivo) y **refuerzo** (dirigido a un
+  dominio con baja precisión — se abre desde lo que ya señala "Contenido
+  difícil" en `AdminEquipo`, §9). No hay una cadencia por defecto (ni
+  trimestral ni anual impuesta): cada ciclo decide su propia fecha límite.
+- **Para quién**: mismo patrón de alcance que actividades obligatorias
+  (`todos`/`equipo`/`persona`, `lib/asignacion.ts`) — admin abre a cualquiera
+  o a toda la operación, un supervisor solo a su equipo.
+- **Sin columna de estado**: `en_curso`/`completado`/`incompleto` se derivan
+  en cliente (`lib/reentrenamiento.ts`, `estadoCiclo`) de la fecha límite y
+  el avance — mismo criterio que `actividades`, que tampoco guarda
+  "vencida", para no arrastrar un estado que se desincroniza del dato real.
+- **Avance = ejercicios practicados en el dominio desde que se abrió el
+  ciclo** (`attempts.fecha >= ciclos_capacitacion.creada_en`, hasta un día
+  después de `fecha_limite`). Lo calcula el RPC `progreso_ciclos_capacitacion()`
+  porque `attempts` tiene RLS solo-propio: un supervisor no puede leer los
+  intentos de su equipo directamente, igual que en `resumen_equipo`/
+  `precision_por_dominio` (§4.2). A diferencia de esos dos, este RPC también
+  incluye al propio caller (no solo a su equipo), porque el ejecutivo
+  también consulta su propio avance en Actividades y en el Panel.
+- **Dónde se ve**: admin y supervisor lo gestionan en el mismo lugar que
+  actividades obligatorias (Administración / Mi equipo); el ejecutivo ve sus
+  ciclos activos con barra de progreso en Actividades, con acceso directo a
+  "Practicar {dominio}"; la ficha individual (§9.1) muestra el detalle por
+  ciclo para el 1:1.
+- **Metas de mantenimiento** (`lib/reentrenamiento.ts`, `tipoMeta`): una meta
+  de `goals` (§9.1) ya no distingue solo cumplida/no cumplida — si el actual
+  ya alcanza el objetivo se etiqueta "mantener" en vez de "en progreso",
+  reflejando que el punto ya no es crecer sino no caer del umbral. Es
+  descriptivo, calculado en cada carga, no un campo guardado.
+- Probado con `src/lib/reentrenamiento.test.ts` (estado derivado del ciclo,
+  días hasta el límite, porcentaje de avance, tipo de meta).
 
 ---
 
@@ -605,6 +672,7 @@ src/
     csv.ts                   # generación/descarga de CSV en el cliente
     reportes.ts              # reporte de equipo y ficha del relator a PDF/Excel (builders puros + descargas diferidas)
     materiales.ts             # biblioteca de materiales: tipos, mimes admitidos, validación de archivo
+    reentrenamiento.ts        # ciclos de re-entrenamiento: tipos, estado derivado, avance, tipo de meta
     busqueda.ts              # índice + búsqueda de dominios/ejercicios (buscador global)
     gamificacion.ts          # XP, niveles, ligas
     insignias.ts             # catálogo y evaluación de insignias
@@ -630,6 +698,7 @@ src/
     AdminEquipo.tsx                   # seguimiento + contenido difícil + rango/tendencia (N2) + menú Exportar (PDF/Excel/CSV)
     AdminMateriales.tsx                # biblioteca de materiales: subir archivo o agregar enlace, listar, archivar
     AdminActividades.tsx                # gestión de actividades obligatorias (admin) + adjuntar materiales
+    AdminCiclosCapacitacion.tsx          # abrir/archivar ciclos de re-entrenamiento + avance por persona
 
   pages/
     Login.tsx / Registro.tsx / Recuperar.tsx / Restablecer.tsx / CuentaInactiva.tsx
@@ -701,13 +770,16 @@ VITE_SUPABASE_ANON_KEY=<clave publicable>
 
 ## 16. Estado y próximos pasos sugeridos
 
-**Completo y en producción (al 2026-07-12):** autenticación con activación
+**Completo y en producción (al 2026-07-18):** autenticación con activación
 por admin, catálogo de **13 dominios** con SRS Leitner, anti-copia y
 **aprendizaje basado en confianza** (2×2, detección del *seguro-pero-
 equivocado*), gamificación completa (XP/niveles/racha/ranking/**ligas por
 división + auto-competencia**/insignias/certificados), actividades
 obligatorias con cumplimiento y **biblioteca de materiales de capacitación**
-(§8.1 — archivo o enlace, adjuntable a cualquier actividad), **quick-start**
+(§8.1 — archivo o enlace, adjuntable a cualquier actividad), **ciclos de
+re-entrenamiento** (§8.2 — recertificación periódica, cambio de producto o
+procedimiento, refuerzo por baja precisión, con avance visible para
+ejecutivo, supervisor y en la ficha individual), **quick-start**
 ("Repasar ahora" salta directo a la sesión), Ejercicios en **grilla de
 bloques**, **buscador global** (paleta ⌘K que encuentra dominios y
 ejercicios), panel admin con analítica individual y de equipo **Nivel 2**
@@ -717,7 +789,8 @@ con celebración depurada y accesibilidad
 (aria-live/foco/AA), identidad visual WOM con modo oscuro, PWA instalable con
 práctica offline. **Integridad del log de acciones auditada y con respaldo
 automático semanal fuera de la base** (§17). Benchmark UX/UI multidimensional
-(§11): promedio **7.3/10**, 7 de 8 dimensiones en 7.5+.
+(§11): promedio **7.3/10**, 7 de 8 dimensiones en 7.5+. Análisis de coherencia
+formación/re-entrenamiento en `design/coherencia-formacion-reentrenamiento.md`.
 
 **Pendiente (decisión de negocio, no técnica):**
 - **Vínculo formación ↔ KPI del negocio** (dim. 7 del benchmark, hoy 3.0 —
