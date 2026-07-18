@@ -33,18 +33,18 @@ Dos roles:
 ## 2. Arquitectura
 
 ```
-┌───────────────────────┐        ┌────────────────────────────┐
+┌─────────────────────┐        ┌────────────────────────┐
 │   Navegador (SPA)    │◄──────►│   Supabase (BaaS)         │
 │   React 19 + Vite     │  REST  │   - Postgres + RLS         │
 │   PWA / offline queue │  Auth  │   - Auth (email/password)  │
 └──────────┬───────────┘        │   - Funciones SQL (RPC)    │
-           │                     └────────────────────────────┘
+           │                     └────────────────────────┘
            │ build estático
            ▼
-┌──────────────────┐
+┌────────────────────────┐
 │   GitHub Pages         │  ← publicado por GitHub Actions
 │   (rama gh-pages)       │     en cada push a main
-└──────────────────┘
+└────────────────────────┘
 ```
 
 **No hay backend propio.** El frontend habla directo con Supabase (Postgres
@@ -869,5 +869,5 @@ Para correrlo a demanda: pedir "genera el respaldo del log de acciones ahora".
 **Recomendaciones abiertas.** Guardar cada `.zip` en almacenamiento durable
 (ya se sube a Google Drive); opcionalmente el plan Pro de Supabase habilita
 backups diarios + PITR (con eso el respaldo semanal pasa a ser redundancia).
-No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompeía la
+No se recomienda cambiar el `ON DELETE CASCADE` a `RESTRICT` (rompeíara la
 eliminación legítima de usuarios de prueba).
