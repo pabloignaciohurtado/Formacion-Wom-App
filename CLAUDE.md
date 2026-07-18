@@ -49,7 +49,13 @@ por las malas.
   `components/AdminCiclosCapacitacion.tsx`, RPC `progreso_ciclos_capacitacion()`)
   para recertificación periódica, cambio de producto/procedimiento o refuerzo
   por baja precisión — ver DOCUMENTACION.md §8.2 y el análisis previo en
-  `design/coherencia-formacion-reentrenamiento.md`.
+  `design/coherencia-formacion-reentrenamiento.md`. El mismo día (2026-07-18),
+  a pedido de Pablo ("la sección Panel está con muchas cosas, que el ranking
+  y las posiciones tengan su propio espacio"), se separó el ranking/liga del
+  Panel a una pantalla nueva `src/pages/Liga.tsx` (ruta `/liga`, ítem propio
+  en el menú con ícono de trofeo) — ver DOCUMENTACION.md §7.3. El Panel quedó
+  solo con el día a día (nivel/XP, racha, repasos, insignias) más una
+  tarjeta compacta de posición que enlaza a `/liga`.
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
   scorecard en `design/scorecard-dimensiones.html`).
 
