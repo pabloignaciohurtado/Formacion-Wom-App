@@ -15,6 +15,19 @@ import {
   descargarFichaPDF,
   type EntradaFicha,
 } from '../lib/reportes'
+import {
+  ETIQUETAS_ESTADO_CICLO,
+  ETIQUETAS_TIPO_CICLO,
+  ETIQUETAS_TIPO_META,
+  ICONO_TIPO_CICLO,
+  diasHastaLimite,
+  estadoCiclo,
+  porcentajeAvance,
+  tipoMeta,
+  type Ciclo,
+  type ProgresoCiclo,
+  type TipoCiclo,
+} from '../lib/reentrenamiento'
 import { MenuExportar } from '../components/MenuExportar'
 import { Boton, Esqueleto, MensajeError, Tarjeta } from '../components/ui'
 import type { Tables } from '../lib/database.types'
@@ -95,6 +108,8 @@ export default function FichaRelator() {
   const [objetivosFlojos, setObjetivosFlojos] = useState<PrecisionObjetivo[]>([])
   const [stats, setStats] = useState<{ intentos: number; correctas: number } | null>(null)
   const [metas, setMetas] = useState<Meta[]>([])
+  const [ciclos, setCiclos] = useState<Ciclo[]>([])
+  const [progresosCiclos, setProgresosCiclos] = useState<ProgresoCiclo[]>([])
   const [metaDominio, setMetaDominio] = useState(DOMINIOS[0].id)
   const [metaObjetivo, setMetaObjetivo] = useState('80')
   const [error, setError] = useState<string | null>(null)
@@ -108,7 +123,7 @@ export default function FichaRelator() {
     const cargar = async () => {
       const desde = new Date()
       desde.setDate(desde.getDate() - 7 * 8)
-      const [p, cards, intentos, metasQ] = await Promise.all([
+      const [p, cards, intentos, metasQ, cics, prog] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
         supabase.from('srs_cards').select('exercise_id, domain_id, caja').eq('user_id', id),
         supabase
@@ -117,10 +132,14 @@ export default function FichaRelator() {
           .eq('user_id', id)
           .gte('fecha', desde.toISOString()),
         supabase.from('goals').select('*').eq('user_id', id),
+        supabase.from('ciclos_capacitacion').select('*').eq('activo', true),
+        supabase.rpc('progreso_ciclos_capacitacion'),
       ])
       if (cancelado) return
       setPerfil(p.data)
       setMetas(metasQ.data ?? [])
+      setCiclos(cics.data ?? [])
+      setProgresosCiclos((prog.data ?? []).filter((row) => row.user_id === id))
 
       const tarjetas = cards.data ?? []
       setMaestrias(
@@ -392,6 +411,10 @@ export default function FichaRelator() {
               const actual =
                 maestrias.find((x) => x.dominio === dom?.titulo)?.valor ?? 0
               const cumplida = actual >= m.maestria_objetivo
+              // Distingue metas "en progreso" (crecer hasta el objetivo) de
+              // "mantener" (ya se alcanzó; el punto es no caer del umbral) —
+              // ver lib/reentrenamiento.ts.
+              const tipo = tipoMeta(actual, m.maestria_objetivo)
               return (
                 <li key={m.id} className="flex items-center gap-2">
                   <span
@@ -400,6 +423,9 @@ export default function FichaRelator() {
                   <span className="flex-1">
                     {dom?.icono} {dom?.titulo ?? m.domain_id}: meta{' '}
                     {m.maestria_objetivo}% · actual {actual}%
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-tinta-suave">
+                    {ETIQUETAS_TIPO_META[tipo]}
                   </span>
                 </li>
               )
@@ -446,6 +472,53 @@ export default function FichaRelator() {
           </div>
         )}
       </Tarjeta>
+
+      {progresosCiclos.length > 0 && (
+        <>
+          <h2 className="mt-8 text-lg font-bold">Ciclos de re-entrenamiento</h2>
+          <ul className="mt-3 space-y-2">
+            {progresosCiclos.map((prog) => {
+              const ciclo = ciclos.find((c) => c.id === prog.ciclo_id)
+              if (!ciclo) return null
+              const dom = DOMINIOS.find((d) => d.id === ciclo.dominio_id)
+              const IconoTipo = ICONO_TIPO_CICLO[(ciclo.tipo as TipoCiclo) ?? 'recertificacion']
+              const estado = estadoCiclo(ciclo.fecha_limite, prog.cumplida)
+              const avance = porcentajeAvance(prog.intentos, ciclo.meta_ejercicios)
+              const dias = diasHastaLimite(ciclo.fecha_limite)
+              return (
+                <li key={ciclo.id}>
+                  <Tarjeta className="py-3">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <IconoTipo className="size-4 shrink-0 text-wom-600" />
+                      <span className="flex-1 font-semibold">
+                        {ciclo.titulo} · {dom?.icono} {dom?.titulo ?? ciclo.dominio_id}
+                      </span>
+                      <span className="text-xs font-semibold text-tinta-suave">
+                        {ETIQUETAS_TIPO_CICLO[(ciclo.tipo as TipoCiclo) ?? 'recertificacion']}
+                      </span>
+                      <span className="text-xs font-semibold text-tinta-suave">
+                        {ETIQUETAS_ESTADO_CICLO[estado]}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-3">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-niebla">
+                        <div
+                          className="h-full rounded-full bg-wom-600"
+                          style={{ width: `${avance}%` }}
+                        />
+                      </div>
+                      <span className="shrink-0 text-xs text-tinta-suave">
+                        {prog.intentos}/{ciclo.meta_ejercicios} · {prog.precision_pct}% ·{' '}
+                        {dias < 0 ? 'venció' : `${dias}d`}
+                      </span>
+                    </div>
+                  </Tarjeta>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
     </section>
   )
 }

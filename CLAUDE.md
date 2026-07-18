@@ -24,7 +24,7 @@ por las malas.
   (inactivo, no tocar) y en algún momento Pablo mencionó un dashboard
   llamado "formación-mujer" que **no es este proyecto** (confusión de
   navegación suya, no un proyecto real relacionado).
-- **Estado al 2026-07-12:** funcionalidad completa en producción (ver §16
+- **Estado al 2026-07-18:** funcionalidad completa en producción (ver §16
   de `DOCUMENTACION.md`). No hay trabajo a medias ni ramas colgando.
   Desde el 2026-07-09 se sumaron (PRs merged, todos desplegados): ligas por
   división + auto-competencia, quick-start, limpieza de celebración +
@@ -39,11 +39,17 @@ por las malas.
   (menú "Exportar" reutilizable `components/MenuExportar.tsx` + `lib/reportes.ts`;
   jspdf y write-excel-file en carga diferida, fuera del bundle inicial), y una
   **auditoría de integridad + respaldo automático del log de acciones**
-  (ver sección "Respaldo" más abajo y `design/auditoria-bd-acciones.md`), y
-  una **biblioteca de materiales de capacitación** (tabla `materiales` +
+  (ver sección "Respaldo" más abajo y `design/auditoria-bd-acciones.md`), una
+  **biblioteca de materiales de capacitación** (tabla `materiales` +
   bucket privado `materiales` en Storage, componente
   `components/AdminMateriales.tsx`) adjuntable a cualquier actividad
-  obligatoria vía `actividad_materiales` (N:N) — ver DOCUMENTACION.md §8.1.
+  obligatoria vía `actividad_materiales` (N:N) — ver DOCUMENTACION.md §8.1, y
+  **ciclos de re-entrenamiento** (tabla `ciclos_capacitacion` +
+  `ciclos_capacitacion_destinatarios`, componente
+  `components/AdminCiclosCapacitacion.tsx`, RPC `progreso_ciclos_capacitacion()`)
+  para recertificación periódica, cambio de producto/procedimiento o refuerzo
+  por baja precisión — ver DOCUMENTACION.md §8.2 y el análisis previo en
+  `design/coherencia-formacion-reentrenamiento.md`.
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
   scorecard en `design/scorecard-dimensiones.html`).
 
@@ -205,6 +211,29 @@ por las malas.
   de `Database` (`database.types.ts`) se mantienen a mano igual que el resto
   del esquema; `storage.buckets`/`storage.objects` no se tipan ahí (son
   schema `storage`, fuera de `public`).
+- **E2E de RLS sin crear usuarios reales:** el clasificador de permisos de
+  la sesión **bloquea** cualquier script (Bash/Node) que haga `signUp` real
+  contra el proyecto Supabase de producción, aunque sea "de prueba" — lo
+  trata como escritura persistente no autorizada específicamente, y la
+  autorización genérica del usuario no alcanza para cubrirlo. Alternativa
+  que sí funciona y es más rápida: un único `execute_sql` con
+  `BEGIN; ... ROLLBACK;` que (1) inserta filas de prueba en `auth.users`
+  (dispara `handle_new_user`, que ya crea el `profile`) y las ajusta con
+  `UPDATE profiles` a los roles que hagan falta, (2) simula cada usuario con
+  `select set_config('request.jwt.claims', json_build_object('sub', '<uuid>',
+  'role','authenticated')::text, true); set local role authenticated;` antes
+  de cada bloque de aserciones (así `auth.uid()` resuelve a ese usuario y
+  las políticas RLS se evalúan de verdad, no como `postgres`/`service_role`
+  que las saltan), (3) vuelca cada resultado a una tabla `temporary` con
+  `grant all ... to authenticated` para poder escribirla bajo el rol
+  simulado, y (4) termina en `ROLLBACK` — cero datos persistidos, verificable
+  después con un `count(*)` sobre los emails de prueba. Para probar que un
+  `INSERT` está bloqueado por RLS, envolverlo en `do $$ ... exception when
+  insufficient_privilege then ... end $$;` (si no lanza esa excepción, la
+  política falló). Usado para verificar `ciclos_capacitacion` (7/7 checks:
+  alcance, aislamiento, bloqueo de insert no autorizado, y visibilidad
+  correcta del RPC `progreso_ciclos_capacitacion()` para uno mismo, el
+  supervisor del equipo, y un tercero ajeno).
 
 ## Pendientes de decisión humana (no técnicos)
 

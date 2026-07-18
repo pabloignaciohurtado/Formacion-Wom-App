@@ -230,6 +230,83 @@ export type Database = {
           },
         ]
       }
+      ciclos_capacitacion: {
+        Row: {
+          activo: boolean
+          alcance: string
+          creada_en: string
+          creada_por: string | null
+          dominio_id: string
+          fecha_limite: string
+          id: string
+          meta_ejercicios: number
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          activo?: boolean
+          alcance: string
+          creada_en?: string
+          creada_por?: string | null
+          dominio_id: string
+          fecha_limite: string
+          id?: string
+          meta_ejercicios?: number
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          activo?: boolean
+          alcance?: string
+          creada_en?: string
+          creada_por?: string | null
+          dominio_id?: string
+          fecha_limite?: string
+          id?: string
+          meta_ejercicios?: number
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclos_capacitacion_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ciclos_capacitacion_destinatarios: {
+        Row: {
+          ciclo_id: string
+          user_id: string
+        }
+        Insert: {
+          ciclo_id: string
+          user_id: string
+        }
+        Update: {
+          ciclo_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclos_capacitacion_destinatarios_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_capacitacion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclos_capacitacion_destinatarios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consultas: {
         Row: {
           actualizada: string | null
@@ -512,8 +589,10 @@ export type Database = {
     Functions: {
       asegurar_corte_semanal: { Args: never; Returns: boolean }
       es_creador_de_actividad: { Args: { aid: string }; Returns: boolean }
+      es_creador_de_ciclo: { Args: { cid: string }; Returns: boolean }
       es_de_mi_equipo: { Args: { quien: string }; Returns: boolean }
       es_destinatario: { Args: { aid: string }; Returns: boolean }
+      es_destinatario_ciclo: { Args: { cid: string }; Returns: boolean }
       heroes_semana: {
         Args: never
         Returns: {
@@ -539,6 +618,18 @@ export type Database = {
           domain_id: string
           intentos: number
           precision_pct: number
+        }[]
+      }
+      progreso_ciclos_capacitacion: {
+        Args: never
+        Returns: {
+          ciclo_id: string
+          correctas: number
+          cumplida: boolean
+          intentos: number
+          nombre: string
+          precision_pct: number
+          user_id: string
         }[]
       }
       puntaje_semanal: {
