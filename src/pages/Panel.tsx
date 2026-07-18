@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
+import { Dumbbell, ExternalLink, Flame, Trophy, Zap } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
@@ -8,14 +8,7 @@ import { Esqueleto, Tarjeta } from '../components/ui'
 import { clasesBoton } from '../components/estilosBoton'
 import { ContadorAnimado } from '../components/ContadorAnimado'
 import { InsigniaModal } from '../components/InsigniaModal'
-import {
-  LIGAS,
-  deltaSemanal,
-  ligaDe,
-  nivelDe,
-  xpTotal,
-  zonaLiga,
-} from '../lib/gamificacion'
+import { LIGAS, ligaDe, nivelDe, xpTotal } from '../lib/gamificacion'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
 import { EASE_OUT, STAGGER } from '../lib/motion'
@@ -30,24 +23,13 @@ interface Datos {
   correctas: number
   repasosPendientes: number
   racha: number
-  // El ranking y los héroes miden PUNTAJE SEMANAL, no XP: son cosas
-  // distintas (el XP acumulado define el nivel; el puntaje, la liga).
-  // El ranking es de la DIVISIÓN del usuario (sus pares del mismo tier), no
-  // global: competir contra todos desmotiva al que va detrás.
-  ranking: {
-    user_id: string
-    nombre: string
-    liga: string
-    puntaje: number
-    posicion: number
-    compiten: number
-  }[]
-  heroes: { nombre: string; puntaje: number; posicion: number }[]
-  progreso: { actual: number; anterior: number }
+  // Se sigue pidiendo aquí (aunque el detalle vive en /liga) porque la
+  // tarjeta "tu liga" necesita la posición y el conteo de gente compitiendo,
+  // y heroes_semana() alimenta la insignia "Héroe de la Semana" más abajo.
+  ranking: { user_id: string; posicion: number; compiten: number }[]
+  heroes: { nombre: string }[]
   insignias: Set<string>
 }
-
-const MEDALLAS = ['🥇', '🥈', '🥉']
 
 export default function Panel() {
   const { user, perfil } = useAuth()
@@ -74,7 +56,6 @@ export default function Panel() {
         racha,
         ranking,
         heroes,
-        progreso,
         cards,
         actividades,
         completadas,
@@ -97,7 +78,6 @@ export default function Panel() {
         supabase.rpc('mi_racha'),
         supabase.rpc('ranking_division'),
         supabase.rpc('heroes_semana'),
-        supabase.rpc('mi_progreso_semanal'),
         supabase.from('srs_cards').select('exercise_id, domain_id, caja').eq('user_id', user.id),
         supabase.from('actividades').select('id').eq('activa', true),
         supabase
@@ -119,7 +99,6 @@ export default function Panel() {
         racha: racha.data ?? 0,
         ranking: ranking.data ?? [],
         heroes: heroes.data ?? [],
-        progreso: progreso.data?.[0] ?? { actual: 0, anterior: 0 },
         insignias,
       })
 
@@ -197,19 +176,21 @@ export default function Panel() {
     return (
       <section>
         <Esqueleto className="h-9 w-64" />
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Esqueleto key={i} className="h-36" />
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Esqueleto key={i} className="h-24" />
           ))}
         </div>
-        <Esqueleto className="mt-6 h-64" />
+        <Esqueleto className="mt-6 h-24" />
       </section>
     )
   }
 
   const xp = xpTotal(datos.intentos, datos.correctas)
   const nivel = nivelDe(xp)
+  const miLiga = ligaDe(perfil?.liga)
   const miPosicion = datos.ranking.find((r) => r.user_id === user?.id)
+  const compiten = datos.ranking[0]?.compiten ?? 0
 
   const tarjetas = [
     {
@@ -233,14 +214,6 @@ export default function Panel() {
       Icono: Zap,
       color: 'text-amber-500 bg-amber-500/10',
     },
-    {
-      clave: 'posicion',
-      valor: miPosicion?.posicion ?? 0,
-      etiqueta: 'Tu lugar en tu liga',
-      Icono: Trophy,
-      color: 'text-exito-texto bg-exito/10',
-      prefijo: '#',
-    },
   ]
 
   return (
@@ -255,9 +228,9 @@ export default function Panel() {
         </div>
         <div className="flex items-center gap-2">
           <span
-            className={`rounded-full bg-gradient-to-r ${ligaDe(perfil?.liga).clase} px-4 py-1.5 text-sm font-bold text-white shadow-lg`}
+            className={`rounded-full bg-gradient-to-r ${miLiga.clase} px-4 py-1.5 text-sm font-bold text-white shadow-lg`}
           >
-            {ligaDe(perfil?.liga).icono} {ligaDe(perfil?.liga).nombre}
+            {miLiga.icono} {miLiga.nombre}
           </span>
           <span className="rounded-full bg-gradient-to-r from-wom-600 to-magenta-500 px-4 py-1.5 text-sm font-bold text-white shadow-lg shadow-wom-600/20">
             {nivel.actual.nombre}
@@ -292,8 +265,8 @@ export default function Panel() {
       </Tarjeta>
 
       {/* Métricas */}
-      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {tarjetas.map(({ clave, valor, etiqueta, Icono, color, prefijo }, i) => (
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {tarjetas.map(({ clave, valor, etiqueta, Icono, color }, i) => (
           <m.div
             key={clave}
             initial={{ opacity: 0, y: reduce ? 0 : 14 }}
@@ -310,14 +283,7 @@ export default function Panel() {
               </span>
               <div>
                 <p className="text-3xl font-extrabold">
-                  {prefijo && valor === 0 ? (
-                    '—'
-                  ) : (
-                    <>
-                      {prefijo}
-                      <ContadorAnimado valor={valor} />
-                    </>
-                  )}
+                  <ContadorAnimado valor={valor} />
                 </p>
                 <p className="text-sm text-tinta-suave">{etiqueta}</p>
               </div>
@@ -336,40 +302,29 @@ export default function Panel() {
           : 'Ir a practicar'}
       </Link>
 
-      {/* Héroes de la semana pasada */}
-      {datos.heroes.length > 0 && (
-        <>
-          <h2 className="mt-8 text-lg font-bold">🏆 Héroes de la semana</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            {datos.heroes.map((h, i) => (
-              <m.div
-                key={h.nombre}
-                initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  delay: reduce ? 0 : 0.15 + i * 0.12,
-                  type: 'spring',
-                  bounce: 0.4,
-                }}
-              >
-                <Tarjeta
-                  className={`flex items-center gap-3 ${
-                    h.posicion === 1 ? 'ring-2 ring-amber-400' : ''
-                  }`}
-                >
-                  <span className="text-3xl">{MEDALLAS[h.posicion - 1] ?? '🏅'}</span>
-                  <div>
-                    <p className="font-bold">{h.nombre}</p>
-                    <p className="text-sm text-tinta-suave">
-                      {h.puntaje} puntos la semana pasada
-                    </p>
-                  </div>
-                </Tarjeta>
-              </m.div>
-            ))}
+      {/* Teaser de la liga: el detalle completo (ranking, héroes, auto-
+          competencia) vive en /liga, su propia pantalla. */}
+      <Tarjeta className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-exito/10 text-exito-texto">
+            <Trophy className="size-5" />
+          </span>
+          <div>
+            <p className="font-bold">
+              {miLiga.icono} {miLiga.nombre}
+            </p>
+            <p className="text-sm text-tinta-suave">
+              {miPosicion ? `#${miPosicion.posicion} de ${compiten} compitiendo` : 'Aún sin puntaje esta semana'}
+            </p>
           </div>
-        </>
-      )}
+        </div>
+        <Link
+          to="/liga"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+        >
+          Ver liga completa <ExternalLink className="size-3.5" />
+        </Link>
+      </Tarjeta>
 
       {/* Vitrina de insignias */}
       <h2 className="mt-8 text-lg font-bold">Tus insignias</h2>
@@ -394,111 +349,6 @@ export default function Panel() {
           )
         })}
       </div>
-
-      {/* Liga por división + auto-competencia */}
-      {(() => {
-        const compiten = datos.ranking[0]?.compiten ?? 0
-        const miLiga = ligaDe(perfil?.liga)
-        const delta = deltaSemanal(datos.progreso.actual, datos.progreso.anterior)
-        return (
-          <>
-            <div className="mt-8 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-bold">
-                Tu liga: <span title={miLiga.nombre}>{miLiga.icono}</span> {miLiga.nombre}
-              </h2>
-              <span className="text-sm font-semibold text-tinta-suave">
-                {compiten} compitiendo esta semana
-              </span>
-            </div>
-
-            {/* Auto-competencia: contra tu propia semana anterior */}
-            <Tarjeta className="mt-3 flex flex-wrap items-center justify-between gap-2 py-3">
-              <span className="text-sm font-medium text-tinta-suave">
-                Llevas <strong className="text-tinta">{datos.progreso.actual} pts</strong> · a
-                esta altura la semana pasada: {datos.progreso.anterior}
-              </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
-                  delta.sentido === 'mejor'
-                    ? 'bg-exito/10 text-exito-texto'
-                    : delta.sentido === 'peor'
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-niebla text-tinta-suave'
-                }`}
-              >
-                {delta.sentido === 'mejor'
-                  ? `▲ +${delta.diff} vs. tu semana pasada`
-                  : delta.sentido === 'peor'
-                    ? `${delta.diff} — aún puedes remontar`
-                    : 'Igual que tu semana pasada'}
-              </span>
-            </Tarjeta>
-
-            <Tarjeta className="mt-3 p-0">
-              <ul>
-                {datos.ranking.map((r) => {
-                  const esYo = r.user_id === user?.id
-                  const zona = zonaLiga({
-                    liga: r.liga,
-                    posicion: r.posicion,
-                    compiten,
-                    puntaje: r.puntaje,
-                  })
-                  const borde =
-                    zona === 'sube'
-                      ? 'border-l-4 border-l-exito'
-                      : zona === 'baja'
-                        ? 'border-l-4 border-l-red-400'
-                        : 'border-l-4 border-l-transparent'
-                  return (
-                    <li
-                      key={r.user_id}
-                      className={`flex items-center gap-3 border-b border-niebla px-5 py-3 last:border-0 ${borde} ${
-                        esYo ? 'bg-wom-50' : ''
-                      }`}
-                    >
-                      <span
-                        className={`w-8 text-center font-extrabold ${
-                          r.posicion <= 3 ? 'text-xl' : 'text-tinta-suave'
-                        }`}
-                      >
-                        {MEDALLAS[r.posicion - 1] ?? `#${r.posicion}`}
-                      </span>
-                      <span className="flex-1 font-semibold">
-                        {r.nombre}
-                        {esYo && (
-                          <span className="ml-2 rounded-full bg-wom-600 px-2 py-0.5 text-xs font-bold text-white">
-                            tú
-                          </span>
-                        )}
-                        {zona === 'sube' && (
-                          <span className="ml-2 rounded-full bg-exito/10 px-2 py-0.5 text-xs font-bold text-exito-texto">
-                            ▲ asciende
-                          </span>
-                        )}
-                        {zona === 'baja' && (
-                          <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
-                            ▼ desciende
-                          </span>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-1 font-bold text-magenta-500">
-                        <Zap className="size-4 fill-current" />
-                        {r.puntaje} pts
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Tarjeta>
-            <p className="mt-2 px-1 text-xs text-tinta-suave">
-              Compites solo contra tu liga. El <strong>top 2 asciende</strong> (con 4 o más
-              compitiendo); quien queda en 0 desciende{' '}
-              {perfil?.liga === 'bronce' ? '(en Bronce no se baja)' : ''}. El corte es cada lunes.
-            </p>
-          </>
-        )
-      })()}
 
       <InsigniaModal
         insignia={colaInsignias[0] ?? null}

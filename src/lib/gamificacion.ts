@@ -22,6 +22,9 @@ export interface Liga {
   clase: string
 }
 
+// Medallas para los 3 primeros lugares (héroes de la semana, ranking de liga).
+export const MEDALLAS = ['🥇', '🥈', '🥉']
+
 // Orden ascendente. La promoción/descenso ocurre en el corte semanal, que
 // ejecuta pg_cron a diario (tarea `corte-semanal-ligas`) llamando a la función
 // SQL asegurar_corte_semanal. Es idempotente: solo actúa la primera vez de cada

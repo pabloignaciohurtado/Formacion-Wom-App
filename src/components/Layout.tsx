@@ -4,6 +4,7 @@ import { m, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '../lib/motion'
 import {
   LayoutDashboard,
+  Trophy,
   Dumbbell,
   ClipboardCheck,
   MessageCircleQuestion,
@@ -25,6 +26,7 @@ import { BuscadorGlobal } from './BuscadorGlobal'
 const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
   { a: '/ejercicios', texto: 'Ejercicios', Icono: Dumbbell },
+  { a: '/liga', texto: 'Liga', Icono: Trophy },
   { a: '/actividades', texto: 'Actividades', Icono: ClipboardCheck },
   { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion },
 ]
