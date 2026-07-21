@@ -57,7 +57,15 @@ por las malas.
   solo con el día a día (nivel/XP, racha, repasos, insignias) más una
   tarjeta compacta de posición que enlaza a `/liga`.
   Benchmark UX/UI multidimensional: promedio **6.3 → 7.3** (`design/revision-ux-benchmark.md`,
-  scorecard en `design/scorecard-dimensiones.html`).
+  scorecard en `design/scorecard-dimensiones.html`). El 2026-07-21, a pedido
+  de Pablo ("en el panel de admin poder crear usuarios"), se agregó alta de
+  usuario directo desde `/admin` (botón "Nuevo usuario",
+  `components/AdminCrearUsuario.tsx`) sin pasar por autorregistro: llama al
+  **primer Edge Function del proyecto**, `admin-crear-usuario`
+  (`supabase/functions/admin-crear-usuario/index.ts`), que es el único
+  lugar que usa `service_role` (nunca expuesto al cliente) — ver
+  DOCUMENTACION.md §5. La contraseña se genera sola si no se indica una, y
+  se muestra una única vez para copiar y compartir por canal seguro.
 
   > Nota de higiene: la §4 de `DOCUMENTACION.md` (lista numerada de
   > migraciones) quedó desactualizada antes de esta sesión — el proyecto

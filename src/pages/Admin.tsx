@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminCiclosCapacitacion } from '../components/AdminCiclosCapacitacion'
+import { AdminCrearUsuario } from '../components/AdminCrearUsuario'
 import { AdminEquipo } from '../components/AdminEquipo'
 import { AdminMateriales } from '../components/AdminMateriales'
 import {
@@ -120,6 +121,7 @@ export default function Admin() {
       )}
 
       <h2 className="mt-6 text-lg font-bold">Usuarios</h2>
+      <AdminCrearUsuario usuarios={usuarios ?? []} onCreado={() => void cargar()} />
       {!usuarios ? (
         <EstadoCarga texto="Cargando usuarios…" />
       ) : (
