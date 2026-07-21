@@ -98,7 +98,7 @@ distintas.
 | Animación | Motion (ex Framer Motion) | Springs y `AnimatePresence` para las transiciones de práctica/celebraciones |
 | Confetti | canvas-confetti | Celebraciones (fin de sesión, insignias, ligas) |
 | Fuente | Poppins (`@fontsource`, self-hosted) | Equivalente libre de la Cera Pro corporativa de WOM (no redistribuible) |
-| Backend | Supabase (Postgres + Auth + RPC) | Sin servidor propio; RLS como única capa de autorización |
+| Backend | Supabase (Postgres + Auth + RPC + Edge Functions) | Sin servidor propio; RLS como capa de autorización, Edge Functions (Deno) solo para lo que exige `service_role` (ej. alta de usuario desde Admin) |
 | PWA | vite-plugin-pwa (Workbox) | Instalable, precache del shell, práctica offline |
 | Lint | oxlint | Rápido, cero configuración compleja |
 | CI/CD | GitHub Actions | Gratuito, integrado al repo |
@@ -215,13 +215,31 @@ autocompletada y validada en tiempo de compilación.
 ## 5. Autenticación y autorización
 
 - **Supabase Auth** con email/contraseña (`src/auth/AuthProvider.tsx`).
-- **Alta de cuenta**: `/registro` llama a `supabase.auth.signUp`; el trigger
-  `handle_new_user` crea el perfil como `role='relator'`, `activo=false`.
-  Nadie puede saltarse este flujo insertando en `profiles` directamente
-  (RLS + trigger lo previenen).
+- **Alta de cuenta (autorregistro)**: `/registro` llama a
+  `supabase.auth.signUp`; el trigger `handle_new_user` crea el perfil como
+  `role='relator'`, `activo=false`. Nadie puede saltarse este flujo
+  insertando en `profiles` directamente (RLS + trigger lo previenen).
+- **Alta de cuenta (desde Admin)**: `components/AdminCrearUsuario.tsx`
+  invoca el Edge Function `admin-crear-usuario`
+  (`supabase/functions/admin-crear-usuario/index.ts`), el único lugar que
+  usa la clave `service_role` (nunca expuesta al cliente). Dos capas de
+  guardia: `verify_jwt: true` a nivel de gateway (rechaza sin JWT válido)
+  y, dentro de la función, un cliente con la clave anónima + el
+  `Authorization` del llamante que consulta su propio `profiles.role` y
+  corta con 403 si no es `admin`. Crea el usuario con
+  `auth.admin.createUser({ email_confirm: true, ... })` (queda confirmado
+  sin pasar por el correo de verificación) y luego hace un `UPDATE
+  profiles` para fijar `role`, `activo=true`, `alta_por`, `alta_fecha` y
+  `supervisor_id` — el trigger `proteger_campos_perfil()` deja pasar esta
+  escritura porque una conexión `service_role` resuelve `auth.uid() is
+  null`, la misma condición con la que ya deja pasar a un admin. Si no se
+  indica contraseña, se genera una aleatoria (14 caracteres, alfabeto sin
+  ambiguos) y se muestra una única vez en la UI para copiar y compartir
+  por un canal seguro.
 - **Activación**: exclusiva de un admin desde `/admin` (botón
-  Activar/Desactivar). Mientras `activo=false`, `ProtectedRoute` muestra
-  `CuentaInactiva` en vez del contenido de la app.
+  Activar/Desactivar) para cuentas que llegaron por autorregistro.
+  Mientras `activo=false`, `ProtectedRoute` muestra `CuentaInactiva` en
+  vez del contenido de la app.
 - **Recuperación de contraseña**: `/recuperar` → `resetPasswordForEmail`
   con `redirectTo` construido desde `BASE_URL` (funciona igual en local y
   en producción) → `/restablecer` valida la sesión de recuperación y llama
@@ -497,8 +515,10 @@ cierra esa brecha.
 
 `src/pages/Admin.tsx` compone tres bloques:
 
-1. **Relatores**: tabla con activar/desactivar (registra `alta_por`,
-   `alta_fecha`/`baja_fecha`), badge de rol y punto de estado.
+1. **Relatores**: botón **Nuevo usuario** (`AdminCrearUsuario.tsx`, §5) para
+   dar de alta cuentas directamente sin pasar por autorregistro, y tabla
+   con activar/desactivar (registra `alta_por`, `alta_fecha`/`baja_fecha`),
+   badge de rol y punto de estado.
 2. **`AdminEquipo`** (analítica, §4.2 `resumen_equipo`/`precision_por_dominio`/`tendencia_equipo`):
    - **Qué atender esta semana** (Nivel 1): tres segmentos accionables
      —inactivos ≥7 días, precisión <70%, obligatorias pendientes—, cada uno
@@ -708,6 +728,7 @@ src/
     AdminMateriales.tsx                # biblioteca de materiales: subir archivo o agregar enlace, listar, archivar
     AdminActividades.tsx                # gestión de actividades obligatorias (admin) + adjuntar materiales
     AdminCiclosCapacitacion.tsx          # abrir/archivar ciclos de re-entrenamiento + avance por persona
+    AdminCrearUsuario.tsx                # alta de usuario desde Admin vía Edge Function (service_role)
 
   pages/
     Login.tsx / Registro.tsx / Recuperar.tsx / Restablecer.tsx / CuentaInactiva.tsx
