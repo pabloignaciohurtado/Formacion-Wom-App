@@ -16,7 +16,7 @@ const VARIANTES: Record<VarianteBoton, string> = {
     'bg-magenta-600 text-white shadow-lg shadow-magenta-600/40 hover:bg-magenta-700 hover:shadow-xl hover:shadow-magenta-600/45',
   secundario:
     'bg-wom-600 text-white shadow-lg shadow-wom-600/30 hover:bg-wom-700',
-  fantasma: 'text-wom-600 hover:bg-wom-50',
+  fantasma: 'text-enlace hover:bg-wom-50',
 }
 
 export function clasesBoton(variante: VarianteBoton = 'primario', extra = '') {

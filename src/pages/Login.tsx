@@ -67,12 +67,12 @@ export default function Login() {
         <div className="mt-6 space-y-1 text-center text-sm text-tinta-suave">
           <p>
             ¿No tienes cuenta?{' '}
-            <Link to="/registro" className="font-semibold text-wom-600 hover:underline">
+            <Link to="/registro" className="font-semibold text-enlace hover:underline">
               Regístrate
             </Link>
           </p>
           <p>
-            <Link to="/recuperar" className="font-semibold text-wom-600 hover:underline">
+            <Link to="/recuperar" className="font-semibold text-enlace hover:underline">
               ¿Olvidaste tu contraseña?
             </Link>
           </p>

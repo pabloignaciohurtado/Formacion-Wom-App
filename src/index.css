@@ -23,6 +23,17 @@
   --color-tinta-suave: #494c66;
   --color-niebla: #eff1f3;
 
+  /* Superficie de tarjetas y barras. Token propio en vez de `white` a secas:
+     el modo oscuro necesita oscurecer las tarjetas SIN oscurecer el blanco
+     real, que sigue haciendo falta sobre el morado de marca (logo, ítem
+     activo del menú) y sobre el magenta de los botones. */
+  --color-superficie: #ffffff;
+
+  /* Morado de texto (enlaces, etiquetas, íconos activos). Separado de
+     `wom-600` porque ese mismo tono también se usa como FONDO: en oscuro el
+     texto necesita aclararse, el fondo no. */
+  --color-enlace: #4d008c;
+
   --font-sans: 'Poppins', system-ui, sans-serif;
 
   /* ── Sistema de movimiento WOM (un solo lenguaje) ─────────────
@@ -33,10 +44,24 @@
   --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);   /* cambios de estado */
 }
 
+/* color-scheme le dice al navegador cómo pintar lo que el CSS no alcanza:
+   scrollbars, <select> desplegados, autocompletado. src/lib/tema.ts también
+   lo fija inline al aplicar el tema; esto es la base por si el JS no corrió. */
+:root {
+  color-scheme: light;
+}
+
 /* Modo oscuro: se redefinen los tokens, así todos los componentes
    cambian sin tocar sus clases. */
 .dark {
-  --color-white: #1c1230;
+  color-scheme: dark;
+
+  /* Solo la superficie: el blanco real se deja intacto porque sigue haciendo
+     falta sobre el morado de marca y el magenta de los botones. */
+  --color-superficie: #1c1230;
+  /* wom-300: 6.5:1 sobre la superficie oscura; el #4d008c original queda en
+     1.5:1, ilegible. */
+  --color-enlace: #a67fc5;
   --color-niebla: #120a1e;
   --color-tinta: #f2eef8;
   --color-tinta-suave: #b7aec9;

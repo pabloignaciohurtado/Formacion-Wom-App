@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { MarcaWom } from './MarcaWom'
+import { SelectorTema } from './SelectorTema'
 
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -35,8 +36,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       {/* Formulario */}
       <section className="flex items-center justify-center p-6 bg-niebla">
         <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <MarcaWom />
+          {/* El tema también se elige antes de entrar: quien prefiere oscuro no
+              debería comerse una pantalla blanca justo en el login. */}
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <div className="lg:hidden">
+              <MarcaWom />
+            </div>
+            <SelectorTema className="ml-auto" />
           </div>
           {children}
         </div>

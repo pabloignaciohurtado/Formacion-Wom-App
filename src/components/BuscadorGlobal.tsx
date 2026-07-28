@@ -113,7 +113,7 @@ export function BuscadorGlobal() {
       >
         <Search className="size-4" />
         <span>Buscar dominio o tema…</span>
-        <kbd className="ml-1 rounded border border-black/10 bg-white px-1.5 text-xs font-semibold text-tinta-suave">
+        <kbd className="ml-1 rounded border border-black/10 bg-superficie px-1.5 text-xs font-semibold text-tinta-suave">
           /
         </kbd>
       </button>
@@ -129,7 +129,7 @@ export function BuscadorGlobal() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setAbierto(false)}
           />
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-superficie shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
             <div className="flex items-center gap-3 border-b border-black/5 px-4">
               <Search className="size-5 shrink-0 text-tinta-suave" />
               <input
@@ -201,7 +201,7 @@ export function BuscadorGlobal() {
                                     {e.dominio.ejercicios.length} ejercicios
                                   </span>
                                 </span>
-                                <span className="shrink-0 text-xs font-semibold text-wom-600">
+                                <span className="shrink-0 text-xs font-semibold text-enlace">
                                   Practicar
                                 </span>
                               </>

@@ -41,7 +41,7 @@ export function InsigniaModal({
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: reduce ? 1 : 0.8, opacity: 0 }}
             transition={tSpring}
-            className="w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl"
+            className="w-full max-w-sm rounded-3xl bg-superficie p-8 text-center shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-bold uppercase tracking-widest text-magenta-500">

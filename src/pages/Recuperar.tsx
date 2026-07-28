@@ -41,7 +41,7 @@ export default function Recuperar() {
           </p>
           <Link
             to="/login"
-            className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+            className="mt-6 inline-block font-semibold text-enlace hover:underline"
           >
             Volver al inicio de sesión
           </Link>
@@ -77,7 +77,7 @@ export default function Recuperar() {
         </form>
 
         <p className="mt-6 text-center text-sm">
-          <Link to="/login" className="font-semibold text-wom-600 hover:underline">
+          <Link to="/login" className="font-semibold text-enlace hover:underline">
             Volver al inicio de sesión
           </Link>
         </p>

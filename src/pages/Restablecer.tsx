@@ -32,7 +32,7 @@ export default function Restablecer() {
           </p>
           <Link
             to="/recuperar"
-            className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+            className="mt-6 inline-block font-semibold text-enlace hover:underline"
           >
             Solicitar nuevo enlace
           </Link>

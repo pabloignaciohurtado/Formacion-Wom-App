@@ -12,15 +12,11 @@ import '@fontsource/poppins/latin-900.css'
 import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { aplicarTema, leerTema } from './lib/tema'
 
-// Tema: preferencia guardada o la del sistema
-const tema = window.localStorage.getItem('tema')
-if (
-  tema === 'oscuro' ||
-  (!tema && window.matchMedia('(prefers-color-scheme: dark)').matches)
-) {
-  document.documentElement.classList.add('dark')
-}
+// Tema: se aplica antes de montar React para que no haya un destello claro
+// en quien tiene el modo oscuro elegido.
+aplicarTema(leerTema())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

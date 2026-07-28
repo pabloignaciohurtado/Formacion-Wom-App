@@ -154,7 +154,7 @@ export default function Admin() {
                         value={r.role}
                         onChange={(e) => void cambiarRol(r, e.target.value as Rol)}
                         aria-label={`Rol de ${r.nombre}`}
-                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                        className="rounded-lg border border-gray-200 bg-superficie px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                       >
                         <option value="ejecutivo">Ejecutivo</option>
                         <option value="supervisor">Supervisor</option>
@@ -170,7 +170,7 @@ export default function Admin() {
                           void cambiarSupervisor(r, e.target.value || null)
                         }
                         aria-label={`Supervisor de ${r.nombre}`}
-                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                        className="rounded-lg border border-gray-200 bg-superficie px-2 py-1 text-xs font-semibold transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                       >
                         <option value="">Sin supervisor</option>
                         {(usuarios ?? [])
@@ -245,7 +245,7 @@ export default function Admin() {
             <li key={c.id}>
               <Tarjeta>
                 <p className="font-medium">
-                  <strong className="text-wom-600">{c.user_nombre}:</strong>{' '}
+                  <strong className="text-enlace">{c.user_nombre}:</strong>{' '}
                   {c.texto}
                 </p>
                 <p className="mt-2 flex items-center gap-2 text-xs text-tinta-suave">
@@ -264,7 +264,7 @@ export default function Admin() {
                           [c.id]: e.target.value,
                         }))
                       }
-                      className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                      className="flex-1 rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                     />
                     <Boton
                       type="button"

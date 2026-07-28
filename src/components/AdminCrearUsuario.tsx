@@ -102,7 +102,7 @@ export function AdminCrearUsuario({
             vuelve a mostrarse. Quien la reciba puede cambiarla desde su
             cuenta cuando quiera.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-white px-4 py-3 font-mono text-sm ring-1 ring-black/5">
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-superficie px-4 py-3 font-mono text-sm ring-1 ring-black/5">
             <span>
               <strong>Correo:</strong> {credenciales.email}
             </span>
@@ -199,7 +199,7 @@ export function AdminCrearUsuario({
                 id={`${idBase}-rol`}
                 value={rol}
                 onChange={(e) => setRol(e.target.value as Rol)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
               >
                 <option value="ejecutivo">{etiquetaRol('ejecutivo')}</option>
                 <option value="supervisor">{etiquetaRol('supervisor')}</option>
@@ -219,7 +219,7 @@ export function AdminCrearUsuario({
                   id={`${idBase}-supervisor`}
                   value={supervisorId}
                   onChange={(e) => setSupervisorId(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                  className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                 >
                   <option value="">Sin supervisor</option>
                   {usuarios

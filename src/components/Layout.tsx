@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { m, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '../lib/motion'
@@ -11,8 +11,6 @@ import {
   ShieldCheck,
   Users,
   LogOut,
-  Moon,
-  Sun,
 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
@@ -22,6 +20,7 @@ import { EstadoCarga } from './ui'
 import { ErrorBoundary } from './ErrorBoundary'
 import { EstadoConexion } from './EstadoConexion'
 import { BuscadorGlobal } from './BuscadorGlobal'
+import { SelectorTema } from './SelectorTema'
 
 const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
@@ -44,16 +43,6 @@ export function Layout() {
   const { perfil, user, signOut } = useAuth()
   const location = useLocation()
   const reduce = useReducedMotion()
-  const [oscuro, setOscuro] = useState(() =>
-    document.documentElement.classList.contains('dark')
-  )
-
-  const alternarTema = () => {
-    const nuevo = !oscuro
-    setOscuro(nuevo)
-    document.documentElement.classList.toggle('dark', nuevo)
-    window.localStorage.setItem('tema', nuevo ? 'oscuro' : 'claro')
-  }
 
   // Sincroniza intentos hechos sin conexión al montar y al volver la red
   useEffect(() => {
@@ -122,24 +111,17 @@ export function Layout() {
       </aside>
 
       {/* Barra superior */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-black/5 bg-white/80 px-4 py-3 backdrop-blur lg:px-8">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-black/5 bg-superficie/80 px-4 py-3 backdrop-blur lg:px-8">
         <div className="lg:hidden">
-          <MarcaWom />
+          <MarcaWom compacta />
         </div>
         <div className="hidden lg:block text-sm text-tinta-suave">
           Plataforma de formación interna
         </div>
         <BuscadorGlobal />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <EstadoConexion />
-          <button
-            type="button"
-            onClick={alternarTema}
-            aria-label={oscuro ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-            className="grid size-9 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-niebla"
-          >
-            {oscuro ? <Sun className="size-5" /> : <Moon className="size-5" />}
-          </button>
+          <SelectorTema />
           <div className="text-right leading-tight hidden sm:block">
             <p className="text-sm font-semibold">{perfil?.nombre ?? user?.email}</p>
             <p className="text-xs text-tinta-suave">
@@ -183,7 +165,7 @@ export function Layout() {
       </main>
 
       {/* Bottom nav móvil */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-black/5 bg-white/95 px-2 py-2 backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-black/5 bg-superficie/95 px-2 py-2 backdrop-blur lg:hidden">
         {enlaces.map(({ a, texto, Icono, exacto }) => (
           <NavLink key={a} to={a} end={exacto}>
             {({ isActive }) => (

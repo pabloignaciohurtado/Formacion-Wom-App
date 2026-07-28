@@ -44,7 +44,7 @@ export default function Registro() {
           </p>
           <Link
             to="/login"
-            className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+            className="mt-6 inline-block font-semibold text-enlace hover:underline"
           >
             Volver al inicio de sesión
           </Link>
@@ -100,7 +100,7 @@ export default function Registro() {
 
         <p className="mt-6 text-center text-sm text-tinta-suave">
           ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-semibold text-wom-600 hover:underline">
+          <Link to="/login" className="font-semibold text-enlace hover:underline">
             Inicia sesión
           </Link>
         </p>

@@ -292,7 +292,7 @@ export default function FichaRelator() {
     <section>
       <Link
         to="/admin"
-        className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-enlace hover:underline"
       >
         <ArrowLeft className="size-4" /> Volver a Administración
       </Link>
@@ -357,7 +357,7 @@ export default function FichaRelator() {
               <span className="font-semibold">
                 {m.icono} {m.dominio}
               </span>
-              <span className="font-bold text-wom-600">{m.valor}%</span>
+              <span className="font-bold text-enlace">{m.valor}%</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-niebla">
               <div
@@ -441,7 +441,7 @@ export default function FichaRelator() {
             <select
               value={metaDominio}
               onChange={(e) => setMetaDominio(e.target.value)}
-              className="mt-1 block rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
+              className="mt-1 block rounded-xl border border-gray-200 bg-superficie px-3 py-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
             >
               {DOMINIOS.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -459,7 +459,7 @@ export default function FichaRelator() {
               step={5}
               value={metaObjetivo}
               onChange={(e) => setMetaObjetivo(e.target.value)}
-              className="mt-1 block w-28 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
+              className="mt-1 block w-28 rounded-xl border border-gray-200 bg-superficie px-3 py-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
             />
           </label>
           <Boton type="submit" disabled={guardando}>
@@ -489,7 +489,7 @@ export default function FichaRelator() {
                 <li key={ciclo.id}>
                   <Tarjeta className="py-3">
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <IconoTipo className="size-4 shrink-0 text-wom-600" />
+                      <IconoTipo className="size-4 shrink-0 text-enlace" />
                       <span className="flex-1 font-semibold">
                         {ciclo.titulo} · {dom?.icono} {dom?.titulo ?? ciclo.dominio_id}
                       </span>

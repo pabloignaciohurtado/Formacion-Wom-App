@@ -339,7 +339,7 @@ export default function Practica() {
 
               <div className="mt-6 grid grid-cols-2 gap-4">
                 <div className="rounded-2xl bg-niebla p-4">
-                  <p className="text-3xl font-extrabold text-wom-600">
+                  <p className="text-3xl font-extrabold text-enlace">
                     <ContadorAnimado valor={correctas} />
                     <span className="text-lg text-tinta-suave">/{cola.length}</span>
                   </p>
@@ -363,7 +363,7 @@ export default function Practica() {
         )}
         <Link
           to="/ejercicios"
-          className="mt-6 inline-block font-semibold text-wom-600 hover:underline"
+          className="mt-6 inline-block font-semibold text-enlace hover:underline"
         >
           ← Volver a ejercicios
         </Link>
@@ -423,7 +423,7 @@ export default function Practica() {
         )
       )}
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-superficie">
         <m.div
           animate={{ width: `${progreso}%` }}
           transition={{ type: 'spring', bounce: 0, duration: 0.6 }}
@@ -456,7 +456,7 @@ export default function Practica() {
               let clase =
                 'w-full rounded-xl border-2 border-transparent bg-niebla px-4 py-3 text-left font-medium transition-colors'
               if (fase === 'pregunta') {
-                clase += ' hover:border-wom-600 hover:bg-white cursor-pointer'
+                clase += ' hover:border-wom-600 hover:bg-superficie cursor-pointer'
               } else if (fase === 'confianza') {
                 // Aún no se revela: solo se marca la elegida, en neutro.
                 clase +=
@@ -521,7 +521,7 @@ export default function Practica() {
                   ref={confianzaRef}
                   type="button"
                   onClick={() => void confirmar(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-wom-600 bg-wom-50 px-4 py-3 font-bold text-wom-600 transition-colors hover:bg-wom-600 hover:text-white"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-wom-600 bg-wom-50 px-4 py-3 font-bold text-enlace transition-colors hover:bg-wom-600 hover:text-white"
                 >
                   <ShieldCheck className="size-5" />
                   Seguro/a
@@ -529,7 +529,7 @@ export default function Practica() {
                 <button
                   type="button"
                   onClick={() => void confirmar(false)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-bold text-tinta-suave transition-colors hover:border-tinta-suave"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-gray-200 bg-superficie px-4 py-3 font-bold text-tinta-suave transition-colors hover:border-tinta-suave"
                 >
                   <HelpCircle className="size-5" />
                   Con dudas
