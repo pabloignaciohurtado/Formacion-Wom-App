@@ -13,8 +13,14 @@ export type ItemPractica = { dominio: Dominio; ejercicio: Ejercicio }
 // Busca un ejercicio por id en todo el catálogo (los ids son globales y
 // estables). Resuelve una tarjeta SRS vencida a su ejercicio sin saber de
 // antemano en qué dominio vive.
-export function buscarEjercicio(ejercicioId: string): ItemPractica | undefined {
-  for (const dominio of DOMINIOS) {
+// `catalogo` permite pasar el catálogo fusionado (estático + materiales
+// creados desde la app). Por defecto usa solo el estático, para que las
+// pruebas y cualquier llamada antigua sigan funcionando igual.
+export function buscarEjercicio(
+  ejercicioId: string,
+  catalogo: Dominio[] = DOMINIOS
+): ItemPractica | undefined {
+  for (const dominio of catalogo) {
     const ejercicio = dominio.ejercicios.find((e) => e.id === ejercicioId)
     if (ejercicio) return { dominio, ejercicio }
   }
@@ -27,12 +33,13 @@ export function buscarEjercicio(ejercicioId: string): ItemPractica | undefined {
 // ejercicio pudo eliminarse) y limita el largo de la sesión.
 export function construirColaRepaso(
   exerciseIds: string[],
-  limite: number
+  limite: number,
+  catalogo: Dominio[] = DOMINIOS
 ): ItemPractica[] {
   const items: ItemPractica[] = []
   for (const id of exerciseIds) {
     if (items.length >= limite) break
-    const encontrado = buscarEjercicio(id)
+    const encontrado = buscarEjercicio(id, catalogo)
     if (encontrado) items.push(encontrado)
   }
   return items

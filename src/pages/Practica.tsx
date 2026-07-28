@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { Check, HelpCircle, ShieldCheck, X, Zap } from 'lucide-react'
+import {
+  BookOpen,
+  Check,
+  ChevronDown,
+  HelpCircle,
+  ShieldCheck,
+  X,
+  Zap,
+} from 'lucide-react'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
-import { obtenerDominio } from '../data/contenido'
 import { construirColaRepaso, type ItemPractica } from '../data/repaso'
+import { useCatalogo } from '../catalogo/useCatalogo'
+import { Leccion } from '../components/Leccion'
 import {
   clasificarRespuesta,
   estaPendiente,
@@ -46,6 +55,8 @@ const NOTA_RESULTADO: Record<ResultadoRespuesta, string> = {
 export default function Practica() {
   const { dominioId } = useParams()
   const { user } = useAuth()
+  const { obtenerDominio, dominios, leccionDe, cargando: cargandoCatalogo } =
+    useCatalogo()
   // Dos modos con la misma pantalla:
   //  - dominio (/ejercicios/:dominioId): practica un dominio concreto.
   //  - repaso (/repasar): junta las tarjetas SRS vencidas de TODOS los
@@ -53,6 +64,7 @@ export default function Practica() {
   //    en la práctica sin pasar por el selector.
   const modoRepaso = !dominioId
   const dominioFijo = dominioId ? obtenerDominio(dominioId) : undefined
+  const leccion = dominioId ? leccionDe(dominioId) : undefined
 
   const [cola, setCola] = useState<ItemPractica[]>([])
   const [indice, setIndice] = useState(0)
@@ -64,6 +76,9 @@ export default function Practica() {
   const [xpFlotante, setXpFlotante] = useState<{ id: number; cantidad: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
+  // La lección arranca plegada: quien ya la leyó no quiere volver a bajarla
+  // cada vez que entra a practicar, y quien la necesita la abre en un clic.
+  const [leccionAbierta, setLeccionAbierta] = useState(false)
   const reduce = useReducedMotion()
 
   // Foco de teclado: al responder salta a "Siguiente"; al avanzar, al enunciado
@@ -75,6 +90,8 @@ export default function Practica() {
 
   useEffect(() => {
     if (!user) return
+    // Un dominio creado desde la app llega con el catálogo remoto: mientras
+    // carga no se puede concluir que el id no existe.
     if (!modoRepaso && !dominioFijo) return
     let cancelado = false
 
@@ -91,7 +108,8 @@ export default function Practica() {
         if (cancelado) return
         const sesion = construirColaRepaso(
           (cards ?? []).map((c) => c.exercise_id),
-          EJERCICIOS_POR_SESION
+          EJERCICIOS_POR_SESION,
+          dominios
         )
         setCola(sesion)
         setFase('pregunta')
@@ -126,7 +144,7 @@ export default function Practica() {
     return () => {
       cancelado = true
     }
-  }, [user, modoRepaso, dominioFijo])
+  }, [user, modoRepaso, dominioFijo, dominios])
 
   // Celebración al terminar la sesión
   useEffect(() => {
@@ -180,8 +198,11 @@ export default function Practica() {
     return indices
   }, [ejercicio])
 
-  // En modo dominio, un id inválido en la URL vuelve al selector.
+  // En modo dominio, un id inválido en la URL vuelve al selector — pero solo
+  // una vez cargado el catálogo remoto, o un material recién publicado
+  // rebotaría al entrar por enlace directo.
   if (!modoRepaso && !dominioFijo) {
+    if (cargandoCatalogo) return <EstadoCarga texto="Cargando contenido…" />
     return <Navigate to="/ejercicios" replace />
   }
 
@@ -430,6 +451,39 @@ export default function Practica() {
           className="h-full rounded-full bg-gradient-to-r from-wom-600 to-magenta-500"
         />
       </div>
+
+      {/* Material de lectura del dominio, si el creador de materiales dejó uno.
+          Solo en modo dominio: en repaso las preguntas vienen de varios y no
+          hay una lección única que aplique. */}
+      {!modoRepaso && leccion && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-superficie dark:border-white/10">
+          <button
+            type="button"
+            onClick={() => setLeccionAbierta((abierta) => !abierta)}
+            aria-expanded={leccionAbierta}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left"
+          >
+            <BookOpen className="size-5 shrink-0 text-enlace" />
+            <span className="flex-1 text-sm font-bold text-tinta">
+              {leccion.titulo}
+            </span>
+            <span className="text-xs font-semibold text-tinta-suave">
+              {leccionAbierta ? 'Ocultar' : 'Leer'}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={`size-4 text-tinta-suave transition-transform ${
+                leccionAbierta ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          {leccionAbierta && (
+            <div className="border-t border-gray-200 px-4 py-3 dark:border-white/10">
+              <Leccion cuerpo={leccion.cuerpo} />
+            </div>
+          )}
+        </div>
+      )}
 
       <m.div
         key={ejercicio.id}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, ChevronRight } from 'lucide-react'
+import { Award, BookOpen, ChevronRight } from 'lucide-react'
 import { AnimatePresence, m } from 'motion/react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../auth/useAuth'
-import { CATEGORIAS, DOMINIOS, type Dominio } from '../data/contenido'
+import { type Dominio } from '../data/contenido'
+import { useCatalogo } from '../catalogo/useCatalogo'
 import { estaPendiente, maestriaDominio } from '../lib/srs'
 import { descargarCertificado } from '../lib/certificado'
 import { Esqueleto, Tarjeta } from '../components/ui'
@@ -24,11 +25,13 @@ function TarjetaDominio({
   estado,
   indice,
   nombrePerfil,
+  tieneLeccion,
 }: {
   dominio: Dominio
   estado: EstadoDominio
   indice: number
   nombrePerfil: string
+  tieneLeccion: boolean
 }) {
   const porHacer = estado.pendientes + estado.nuevos
   return (
@@ -47,6 +50,15 @@ function TarjetaDominio({
             {dominio.titulo}
           </h3>
           <p className="mt-0.5 text-sm text-tinta-suave">{dominio.descripcion}</p>
+          {/* Los dominios creados desde el panel pueden traer material de
+              lectura; se avisa aquí para que el relator sepa que puede
+              estudiar antes de responder. */}
+          {tieneLeccion && (
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-niebla px-2.5 py-1 text-xs font-semibold text-enlace">
+              <BookOpen className="size-3.5" />
+              Incluye lección
+            </p>
+          )}
         </div>
 
         <div>
@@ -93,6 +105,10 @@ function TarjetaDominio({
 
 export default function Ejercicios() {
   const { user, perfil } = useAuth()
+  // El catálogo fusionado: los 13 dominios estáticos más los materiales
+  // publicados desde el creador. Mientras el remoto viaja ya hay estáticos,
+  // así que la grilla nunca queda en blanco.
+  const { dominios: DOMINIOS, categorias: CATEGORIAS, leccionDe } = useCatalogo()
   const [estados, setEstados] = useState<Record<string, EstadoDominio> | null>(
     null
   )
@@ -144,7 +160,7 @@ export default function Ejercicios() {
     return () => {
       cancelado = true
     }
-  }, [user])
+  }, [user, DOMINIOS, CATEGORIAS])
 
   const categoriaActiva =
     CATEGORIAS.find((c) => c.id === activa) ?? CATEGORIAS[0]
@@ -182,11 +198,12 @@ export default function Ejercicios() {
                 .map((id) => DOMINIOS.find((d) => d.id === id))
                 .filter((d): d is Dominio => Boolean(d))
               const porHacer = dominios.reduce(
-                (s, d) => s + estados[d.id].pendientes + estados[d.id].nuevos,
+                (s, d) =>
+                  s + (estados[d.id]?.pendientes ?? 0) + (estados[d.id]?.nuevos ?? 0),
                 0
               )
               const maestriaProm = Math.round(
-                dominios.reduce((s, d) => s + estados[d.id].maestria, 0) /
+                dominios.reduce((s, d) => s + (estados[d.id]?.maestria ?? 0), 0) /
                   Math.max(dominios.length, 1)
               )
               const seleccionada = activa === categoria.id
@@ -235,9 +252,17 @@ export default function Ejercicios() {
                 <TarjetaDominio
                   key={dominio.id}
                   dominio={dominio}
-                  estado={estados[dominio.id]}
+                  estado={
+                    estados[dominio.id] ?? {
+                      maestria: 0,
+                      pendientes: 0,
+                      nuevos: dominio.ejercicios.length,
+                      meta: null,
+                    }
+                  }
                   indice={i}
                   nombrePerfil={perfil?.nombre ?? ''}
+                  tieneLeccion={Boolean(leccionDe(dominio.id))}
                 />
               ))}
             </m.div>
