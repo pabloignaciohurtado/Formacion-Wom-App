@@ -1,0 +1,44 @@
+# Workflow TEMPORAL. Aplica el renombrado mecánico de tokens de color en
+# toda la carpeta src/ y se borra en cuanto termina su trabajo.
+#
+# Existe porque la sesión remota que hizo el cambio no podía pushear los ~200 KB
+# de archivos afectados: el cambio es un reemplazo determinista de dos cadenas,
+# así que se ejecuta aquí en vez de subir cada archivo entero.
+#
+#   bg-white     -> bg-superficie   (la superficie de tarjetas se oscurece)
+#   text-wom-600 -> text-enlace     (el morado de texto se aclara en oscuro)
+#
+# Layout.tsx queda excluido a propósito: su barra lateral es siempre morada,
+# así que sus bg-white/10 y bg-white/5 son blanco de verdad y deben quedarse.
+
+name: tmp renombrar tokens
+
+on:
+  workflow_dispatch:
+
+jobs:
+  renombrar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/modo-oscuro-seleccionable
+
+      - name: Aplicar reemplazos
+        run: |
+          set -euo pipefail
+          grep -rlE 'bg-white|text-wom-600' src --include='*.tsx' --include='*.ts' \
+            | grep -v 'src/components/Layout.tsx' \
+            | xargs sed -i 's/bg-white/bg-superficie/g; s/text-wom-600/text-enlace/g'
+          git diff --stat
+
+      - name: Commitear
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A src
+          git commit -m 'refactor(tema): bg-white -> bg-superficie y text-wom-600 -> text-enlace'
+          git push origin HEAD:claude/modo-oscuro-seleccionable
