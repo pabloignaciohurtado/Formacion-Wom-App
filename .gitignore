@@ -18,6 +18,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Verificación visual: los scripts de Playwright y las capturas que generan
+# son andamiaje de sesión (se rehacen en cada cambio de UI y pesan megas).
+# Se envían al usuario para revisar, no viven en el repo.
+capturas/
+capturas*.mjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
