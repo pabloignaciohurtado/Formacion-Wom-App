@@ -83,8 +83,18 @@ por las malas.
   intacto y el contenido nuevo vive en la base (`contenido_dominios`,
   `contenido_objetivos`, `contenido_ejercicios`, `contenido_lecciones`),
   **fusionándose en tiempo de ejecución** vía `src/catalogo/CatalogoProvider.tsx`
-  + `useCatalogo()` — ver DOCUMENTACION.md §6.1.1. Falta la segunda entrega:
-  borrador asistido por IA (Edge Function, clave de API solo en el servidor).
+  + `useCatalogo()` — ver DOCUMENTACION.md §6.1.1. La segunda entrega (PR #75)
+  sumó el **borrador asistido por IA**: en el formulario se pega material de
+  referencia y la Edge Function `generar-borrador-material` propone lección,
+  objetivos y preguntas para revisar y editar antes de publicar. La clave de
+  la IA vive **solo** en el servidor (secreto `ANTHROPIC_API_KEY` de Supabase,
+  opcional `MODELO_IA`; por defecto `claude-sonnet-5`), nunca en el navegador.
+  La función exige JWT y rol supervisor/admin, y pide JSON estructurado con
+  *forced tool use*. La respuesta del modelo se trata como texto no confiable:
+  `src/lib/borradorIa.ts` la normaliza (acota índices, recorta a los máximos,
+  descarta preguntas incompletas, deriva un slug libre) para que el
+  administrador nunca quede en un estado imposible de guardar — ver
+  DOCUMENTACION.md §6.1.2.
 
 ## Cómo se trabaja en este repo
 
