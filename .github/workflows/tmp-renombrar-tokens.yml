@@ -10,11 +10,17 @@
 #
 # Layout.tsx queda excluido a propósito: su barra lateral es siempre morada,
 # así que sus bg-white/10 y bg-white/5 son blanco de verdad y deben quedarse.
+#
+# El disparo es por push a esta rama (no workflow_dispatch) porque GitHub solo
+# ofrece el dispatch manual si el archivo ya existe en la rama por defecto.
+# El reemplazo es idempotente: volver a correrlo no cambia nada.
 
 name: tmp renombrar tokens
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - claude/modo-oscuro-seleccionable
 
 jobs:
   renombrar:
@@ -31,12 +37,16 @@ jobs:
           set -euo pipefail
           grep -rlE 'bg-white|text-wom-600' src --include='*.tsx' --include='*.ts' \
             | grep -v 'src/components/Layout.tsx' \
-            | xargs sed -i 's/bg-white/bg-superficie/g; s/text-wom-600/text-enlace/g'
+            | xargs -r sed -i 's/bg-white/bg-superficie/g; s/text-wom-600/text-enlace/g'
           git diff --stat
 
-      - name: Commitear
+      - name: Commitear si hay cambios
         run: |
           set -euo pipefail
+          if git diff --quiet; then
+            echo 'Nada que renombrar: ya estaba aplicado.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add -A src
