@@ -79,7 +79,7 @@ export default function Consultas() {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Escribe tu pregunta…"
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+            className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
           />
           {error && <MensajeError>{error}</MensajeError>}
           <Boton type="submit" disabled={enviando || !texto.trim()}>

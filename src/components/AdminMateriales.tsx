@@ -255,7 +255,7 @@ export function AdminMateriales() {
                   type="file"
                   accept={ACEPTA_ARCHIVO}
                   onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-                  className="block w-full rounded-xl border border-gray-200 bg-white text-sm text-tinta-suave file:mr-4 file:rounded-lg file:border-0 file:bg-wom-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-wom-700"
+                  className="block w-full rounded-xl border border-gray-200 bg-superficie text-sm text-tinta-suave file:mr-4 file:rounded-lg file:border-0 file:bg-wom-600 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-white hover:file:bg-wom-700"
                 />
               </div>
               {archivo && (
@@ -282,7 +282,7 @@ export function AdminMateriales() {
                   id="mat-tipo-enlace"
                   value={tipoEnlace}
                   onChange={(e) => setTipoEnlace(e.target.value as 'video' | 'enlace')}
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-tinta transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-tinta transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                 >
                   <option value="video">Video</option>
                   <option value="enlace">Otro enlace</option>
@@ -316,7 +316,7 @@ export function AdminMateriales() {
             return (
               <li key={m.id}>
                 <Tarjeta className="flex items-start gap-3 p-4">
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-wom-600/10 text-wom-600">
+                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-wom-600/10 text-enlace">
                     <Icono className="size-5" />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -332,7 +332,7 @@ export function AdminMateriales() {
                       <button
                         type="button"
                         onClick={() => void abrir(m)}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-enlace hover:underline"
                       >
                         Ver <ExternalLink className="size-3.5" />
                       </button>

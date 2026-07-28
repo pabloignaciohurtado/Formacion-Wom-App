@@ -368,7 +368,7 @@ export function AdminActividades() {
                     placeholder="Buscar por nombre…"
                     value={filtro}
                     onChange={(e) => setFiltro(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-tinta placeholder:text-gray-400 transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    className="w-full rounded-xl border border-gray-200 bg-superficie py-2.5 pl-9 pr-4 text-tinta placeholder:text-gray-400 transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
                   />
                 </div>
                 <ul className="mt-2 max-h-44 space-y-1 overflow-y-auto rounded-xl border border-niebla p-2">
@@ -436,7 +436,7 @@ export function AdminActividades() {
                         </span>
                       )}
                     </h3>
-                    <span className="rounded-full bg-wom-600/10 px-2.5 py-0.5 text-xs font-bold text-wom-600">
+                    <span className="rounded-full bg-wom-600/10 px-2.5 py-0.5 text-xs font-bold text-enlace">
                       {/* "Mi equipo" solo tiene sentido para quien la creó */}
                       {a.alcance === 'equipo' && a.creada_por !== user?.id
                         ? 'Equipo'
@@ -478,7 +478,7 @@ export function AdminActividades() {
                             key={m.id}
                             type="button"
                             onClick={() => void abrirMaterial(m)}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-niebla px-2.5 py-1 text-xs font-semibold text-tinta-suave transition-colors hover:text-wom-600"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-niebla px-2.5 py-1 text-xs font-semibold text-tinta-suave transition-colors hover:text-enlace"
                             title={ETIQUETAS_TIPO[(m.tipo as TipoMaterial) ?? 'enlace']}
                           >
                             <Icono className="size-3.5" />

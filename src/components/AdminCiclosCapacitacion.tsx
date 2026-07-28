@@ -29,7 +29,7 @@ import type { Tables } from '../lib/database.types'
 type Persona = Pick<Tables<'profiles'>, 'id' | 'nombre' | 'activo' | 'supervisor_id'>
 
 const CLASES_ESTADO: Record<string, string> = {
-  en_curso: 'bg-wom-600/10 text-wom-600',
+  en_curso: 'bg-wom-600/10 text-enlace',
   completado: 'bg-exito/10 text-exito-texto',
   incompleto: 'bg-red-100 text-red-700',
 }
@@ -210,7 +210,7 @@ export function AdminCiclosCapacitacion() {
               <select
                 value={dominioId}
                 onChange={(e) => setDominioId(e.target.value)}
-                className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
+                className="mt-1 block w-full rounded-xl border border-gray-200 bg-superficie px-3 py-2.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
               >
                 {DOMINIOS.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -225,7 +225,7 @@ export function AdminCiclosCapacitacion() {
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as TipoCiclo)}
-                className="mt-1 block w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
+                className="mt-1 block w-full rounded-xl border border-gray-200 bg-superficie px-3 py-2.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-wom-600"
               >
                 {TIPOS_CICLO.map((t) => (
                   <option key={t} value={t}>
@@ -345,7 +345,7 @@ export function AdminCiclosCapacitacion() {
               <li key={c.id}>
                 <Tarjeta className={c.activo ? '' : 'opacity-60'}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <IconoTipo className="size-4 shrink-0 text-wom-600" />
+                    <IconoTipo className="size-4 shrink-0 text-enlace" />
                     <h3 className="flex-1 font-bold">
                       {c.titulo}
                       {!c.activo && (
@@ -354,7 +354,7 @@ export function AdminCiclosCapacitacion() {
                         </span>
                       )}
                     </h3>
-                    <span className="rounded-full bg-wom-600/10 px-2.5 py-0.5 text-xs font-bold text-wom-600">
+                    <span className="rounded-full bg-wom-600/10 px-2.5 py-0.5 text-xs font-bold text-enlace">
                       {dominio?.icono} {dominio?.titulo ?? c.dominio_id}
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-tinta-suave">

@@ -59,7 +59,7 @@ export class ErrorBoundary extends Component<Props, Estado> {
         role="alert"
         className="grid min-h-dvh place-items-center bg-niebla p-6 text-tinta"
       >
-        <div className="w-full max-w-md rounded-[20px] bg-white p-8 text-center shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-1 ring-black/5">
+        <div className="w-full max-w-md rounded-[20px] bg-superficie p-8 text-center shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-1 ring-black/5">
           <p className="text-4xl">{esChunk ? '🔄' : '🔧'}</p>
           <h1 className="mt-4 text-2xl font-black tracking-[-0.02em]">
             {esChunk ? 'Hay una versión nueva' : 'Algo se rompió'}

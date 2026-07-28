@@ -48,7 +48,7 @@ export function MenuExportar({
         aria-expanded={abierto}
         disabled={ocupado}
         onClick={() => setAbierto((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-superficie px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-enlace disabled:opacity-60"
       >
         <Download className="size-4" />
         {ocupado ? 'Generando…' : 'Exportar'}
@@ -57,7 +57,7 @@ export function MenuExportar({
       {abierto && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-20 mt-1 w-64 overflow-hidden rounded-xl border border-gray-200 bg-superficie py-1 shadow-lg"
         >
           {opciones.map((op) => {
             const Icono = op.icono
@@ -73,7 +73,7 @@ export function MenuExportar({
                 }}
                 className="flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-niebla disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Icono className="mt-0.5 size-4 shrink-0 text-wom-600" />
+                <Icono className="mt-0.5 size-4 shrink-0 text-enlace" />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">
                     {op.etiqueta}

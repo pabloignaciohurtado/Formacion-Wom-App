@@ -30,7 +30,7 @@ export function Campo({
       </label>
       <input
         id={id}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-tinta placeholder:text-gray-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-wom-600 focus:border-transparent"
+        className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-tinta placeholder:text-gray-400 transition-shadow focus:outline-none focus:ring-2 focus:ring-wom-600 focus:border-transparent"
         {...props}
       />
     </div>
@@ -46,7 +46,7 @@ export function Tarjeta({
 }) {
   return (
     <div
-      className={`rounded-[20px] bg-white p-6 shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-1 ring-black/5 dark:ring-white/10 ${className}`}
+      className={`rounded-[20px] bg-superficie p-6 shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-1 ring-black/5 dark:ring-white/10 ${className}`}
     >
       {children}
     </div>

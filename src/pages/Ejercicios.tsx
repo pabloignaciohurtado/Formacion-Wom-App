@@ -40,7 +40,7 @@ function TarjetaDominio({
     >
       <Tarjeta className="flex h-full flex-col gap-3">
         <div>
-          <h3 className="flex items-center gap-2 font-bold text-wom-600">
+          <h3 className="flex items-center gap-2 font-bold text-enlace">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-wom-50 text-lg">
               {dominio.icono}
             </span>
@@ -196,7 +196,7 @@ export default function Ejercicios() {
                   type="button"
                   onClick={() => setActiva(categoria.id)}
                   aria-pressed={seleccionada}
-                  className={`flex flex-col gap-2 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 transition-all dark:ring-white/10 ${
+                  className={`flex flex-col gap-2 rounded-2xl bg-superficie p-4 text-left shadow-sm ring-1 transition-all dark:ring-white/10 ${
                     seleccionada
                       ? 'shadow-[0_10px_30px_-14px_rgba(39,0,70,0.28)] ring-2 ring-wom-600'
                       : 'ring-black/5 hover:ring-wom-300'

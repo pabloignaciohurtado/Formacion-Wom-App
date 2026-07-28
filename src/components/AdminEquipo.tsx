@@ -106,7 +106,7 @@ const SEGMENTOS: { id: Segmento; etiqueta: (n: number) => string; clase: string 
   {
     id: 'obligatorios',
     etiqueta: (n) => `${n} con obligatorios pendientes`,
-    clase: 'bg-wom-50 text-wom-600 ring-wom-600/20',
+    clase: 'bg-wom-50 text-enlace ring-wom-600/20',
   },
 ]
 
@@ -221,7 +221,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
           <div
             role="group"
             aria-label="Rango de fechas"
-            className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-semibold"
+            className="inline-flex rounded-lg border border-gray-200 bg-superficie p-0.5 text-xs font-semibold"
           >
             {RANGOS.map((r) => (
               <button
@@ -232,7 +232,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
                 className={`rounded-md px-2.5 py-1 transition-colors ${
                   rango === r.id
                     ? 'bg-wom-600 text-white'
-                    : 'text-tinta-suave hover:text-wom-600'
+                    : 'text-tinta-suave hover:text-enlace'
                 }`}
               >
                 {r.etiqueta}
@@ -307,7 +307,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
                 <button
                   type="button"
                   onClick={() => setFiltro(null)}
-                  className="text-xs font-semibold text-wom-600 hover:underline"
+                  className="text-xs font-semibold text-enlace hover:underline"
                 >
                   Ver todos
                 </button>
@@ -380,7 +380,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
                       <td className="px-5 py-3 text-right">
                         <Link
                           to={`/admin/relator/${r.user_id}`}
-                          className="inline-flex items-center gap-0.5 text-sm font-semibold text-wom-600 hover:underline"
+                          className="inline-flex items-center gap-0.5 text-sm font-semibold text-enlace hover:underline"
                         >
                           Ficha <ChevronRight className="size-4" />
                         </Link>
@@ -414,7 +414,7 @@ export function AdminEquipo({ conFicha = true }: { conFicha?: boolean }) {
             <button
               type="button"
               onClick={exportarDificiles}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-wom-600"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-superficie px-3 py-1.5 text-sm font-semibold text-tinta-suave transition-colors hover:text-enlace"
             >
               <Download className="size-4" />
               Exportar CSV

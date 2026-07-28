@@ -205,7 +205,7 @@ export default function Panel() {
       valor: datos.repasosPendientes,
       etiqueta: 'Repasos pendientes hoy',
       Icono: Dumbbell,
-      color: 'text-wom-600 bg-wom-600/10',
+      color: 'text-enlace bg-wom-600/10',
     },
     {
       clave: 'xp',
@@ -241,7 +241,7 @@ export default function Panel() {
       {/* Nivel y progreso */}
       <Tarjeta className="mt-6">
         <div className="flex items-center justify-between text-sm font-semibold">
-          <span className="text-wom-600">{nivel.actual.nombre}</span>
+          <span className="text-enlace">{nivel.actual.nombre}</span>
           {nivel.siguiente ? (
             <span className="text-tinta-suave">
               {nivel.siguiente.min - xp} XP para {nivel.siguiente.nombre}
@@ -320,7 +320,7 @@ export default function Panel() {
         </div>
         <Link
           to="/liga"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-enlace hover:underline"
         >
           Ver liga completa <ExternalLink className="size-3.5" />
         </Link>

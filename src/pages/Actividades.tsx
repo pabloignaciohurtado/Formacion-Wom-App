@@ -25,7 +25,7 @@ type Actividad = Tables<'actividades'>
 type Adjunto = Tables<'actividad_materiales'>
 
 const CLASES_ESTADO: Record<string, string> = {
-  en_curso: 'bg-wom-600/10 text-wom-600',
+  en_curso: 'bg-wom-600/10 text-enlace',
   completado: 'bg-exito/10 text-exito-texto',
   incompleto: 'bg-red-100 text-red-700',
 }
@@ -178,7 +178,7 @@ export default function Actividades() {
                 <li key={ciclo.id}>
                   <Tarjeta>
                     <div className="flex flex-wrap items-center gap-2">
-                      <IconoTipo className="size-4 shrink-0 text-wom-600" />
+                      <IconoTipo className="size-4 shrink-0 text-enlace" />
                       <h3 className="flex-1 font-bold">{ciclo.titulo}</h3>
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${CLASES_ESTADO[estado]}`}
@@ -210,7 +210,7 @@ export default function Actividades() {
                       {estado !== 'completado' && dominio && (
                         <Link
                           to={`/ejercicios/${dominio.id}`}
-                          className="inline-flex items-center gap-1 text-sm font-semibold text-wom-600 hover:underline"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-enlace hover:underline"
                         >
                           Practicar {dominio.titulo} <ExternalLink className="size-3.5" />
                         </Link>
@@ -267,7 +267,7 @@ export default function Actividades() {
                               key={mat.id}
                               type="button"
                               onClick={() => void abrirMaterial(mat)}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-wom-600/10 px-2.5 py-1 text-xs font-semibold text-wom-600"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-wom-600/10 px-2.5 py-1 text-xs font-semibold text-enlace"
                               title={ETIQUETAS_TIPO[(mat.tipo as TipoMaterial) ?? 'enlace']}
                             >
                               <Icono className="size-3.5" />
@@ -292,7 +292,7 @@ export default function Actividades() {
                           href={a.enlace}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 font-semibold text-wom-600 hover:underline"
+                          className="inline-flex items-center gap-1 font-semibold text-enlace hover:underline"
                         >
                           Ver material <ExternalLink className="size-4" />
                         </a>
