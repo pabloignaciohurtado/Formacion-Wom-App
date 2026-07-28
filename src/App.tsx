@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { domAnimation, LazyMotion } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
+import { CatalogoProvider } from './catalogo/CatalogoProvider'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AdminRoute } from './auth/AdminRoute'
 import { SupervisorRoute } from './auth/SupervisorRoute'
@@ -52,7 +53,9 @@ export default function App() {
               <Route path="/recuperar" element={<Recuperar />} />
               <Route path="/restablecer" element={<Restablecer />} />
               <Route element={<ProtectedRoute />}>
-                <Route element={<Layout />}>
+                {/* El catálogo (estático + materiales publicados) se carga una
+                    sola vez, ya con sesión: la RLS lo exige. */}
+                <Route element={<CatalogoProvider><Layout /></CatalogoProvider>}>
                   <Route path="/" element={<Panel />} />
                   <Route path="/liga" element={<Liga />} />
                   <Route path="/ejercicios" element={<Ejercicios />} />

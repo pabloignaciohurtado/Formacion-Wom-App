@@ -351,6 +351,184 @@ export type Database = {
           },
         ]
       }
+      contenido_dominios: {
+        Row: {
+          activo: boolean
+          actualizado_en: string
+          categoria_id: string
+          creado_en: string
+          creado_por: string | null
+          descripcion: string
+          icono: string
+          id: string
+          publicado: boolean
+          titulo: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_en?: string
+          categoria_id?: string
+          creado_en?: string
+          creado_por?: string | null
+          descripcion?: string
+          icono?: string
+          id: string
+          publicado?: boolean
+          titulo: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_en?: string
+          categoria_id?: string
+          creado_en?: string
+          creado_por?: string | null
+          descripcion?: string
+          icono?: string
+          id?: string
+          publicado?: boolean
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contenido_dominios_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contenido_ejercicios: {
+        Row: {
+          activo: boolean
+          correcta: number
+          dominio_id: string
+          enunciado: string
+          explicacion: string
+          id: string
+          objetivo_id: string
+          opciones: string[]
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          correcta: number
+          dominio_id: string
+          enunciado: string
+          explicacion: string
+          id: string
+          objetivo_id: string
+          opciones: string[]
+          orden?: number
+        }
+        Update: {
+          activo?: boolean
+          correcta?: number
+          dominio_id?: string
+          enunciado?: string
+          explicacion?: string
+          id?: string
+          objetivo_id?: string
+          opciones?: string[]
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contenido_ejercicios_dominio_id_fkey"
+            columns: ["dominio_id"]
+            isOneToOne: false
+            referencedRelation: "contenido_dominios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contenido_ejercicios_objetivo_id_fkey"
+            columns: ["objetivo_id"]
+            isOneToOne: false
+            referencedRelation: "contenido_objetivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contenido_lecciones: {
+        Row: {
+          activo: boolean
+          actualizado_en: string
+          creado_en: string
+          cuerpo: string
+          dominio_id: string
+          id: string
+          objetivo_id: string | null
+          orden: number
+          titulo: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_en?: string
+          creado_en?: string
+          cuerpo?: string
+          dominio_id: string
+          id?: string
+          objetivo_id?: string | null
+          orden?: number
+          titulo: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_en?: string
+          creado_en?: string
+          cuerpo?: string
+          dominio_id?: string
+          id?: string
+          objetivo_id?: string | null
+          orden?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contenido_lecciones_dominio_id_fkey"
+            columns: ["dominio_id"]
+            isOneToOne: false
+            referencedRelation: "contenido_dominios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contenido_lecciones_objetivo_id_fkey"
+            columns: ["objetivo_id"]
+            isOneToOne: false
+            referencedRelation: "contenido_objetivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contenido_objetivos: {
+        Row: {
+          dominio_id: string
+          id: string
+          orden: number
+          titulo: string
+        }
+        Insert: {
+          dominio_id: string
+          id: string
+          orden?: number
+          titulo: string
+        }
+        Update: {
+          dominio_id?: string
+          id?: string
+          orden?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contenido_objetivos_dominio_id_fkey"
+            columns: ["dominio_id"]
+            isOneToOne: false
+            referencedRelation: "contenido_dominios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cortes_semanales: {
         Row: {
           procesado_en: string
@@ -588,8 +766,10 @@ export type Database = {
     }
     Functions: {
       asegurar_corte_semanal: { Args: never; Returns: boolean }
+      contenido_dominio_visible: { Args: { did: string }; Returns: boolean }
       es_creador_de_actividad: { Args: { aid: string }; Returns: boolean }
       es_creador_de_ciclo: { Args: { cid: string }; Returns: boolean }
+      es_creador_de_dominio: { Args: { did: string }; Returns: boolean }
       es_de_mi_equipo: { Args: { quien: string }; Returns: boolean }
       es_destinatario: { Args: { aid: string }; Returns: boolean }
       es_destinatario_ciclo: { Args: { cid: string }; Returns: boolean }

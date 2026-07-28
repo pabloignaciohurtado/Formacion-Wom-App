@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../components/ui'
 import { AdminActividades } from '../components/AdminActividades'
 import { AdminCiclosCapacitacion } from '../components/AdminCiclosCapacitacion'
+import { AdminContenidos } from '../components/AdminContenidos'
 import { AdminCrearUsuario } from '../components/AdminCrearUsuario'
 import { AdminEquipo } from '../components/AdminEquipo'
 import { AdminMateriales } from '../components/AdminMateriales'
@@ -229,6 +230,8 @@ export default function Admin() {
       <AdminEquipo />
 
       <AdminMateriales />
+
+      <AdminContenidos />
 
       <AdminActividades />
 

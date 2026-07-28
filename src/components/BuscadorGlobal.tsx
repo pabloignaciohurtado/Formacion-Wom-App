@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { buscarDominios, buscarEjercicios } from '../lib/busqueda'
+import { useCatalogo } from '../catalogo/useCatalogo'
 import type { Dominio, Ejercicio } from '../data/contenido'
 
 type Entrada =
@@ -19,8 +20,11 @@ export function BuscadorGlobal() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const dominios = buscarDominios(q).slice(0, 5)
-  const ejercicios = buscarEjercicios(q).slice(0, 6)
+  // Busca sobre el catálogo fusionado: los materiales publicados desde el
+  // creador también son encontrables.
+  const { dominios: catalogo, categorias } = useCatalogo()
+  const dominios = buscarDominios(q, catalogo, categorias).slice(0, 5)
+  const ejercicios = buscarEjercicios(q, catalogo).slice(0, 6)
   const entradas: Entrada[] = [
     ...dominios.map(
       (r): Entrada => ({
