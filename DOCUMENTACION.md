@@ -284,6 +284,60 @@ memoriza, porque caduca). El análisis metodológico está en
 y explicación no vacía. Barato de mantener, atrapa errores de autoría
 antes de producción. Corre en CI junto al resto (`npx vitest run`).
 
+### 6.1.1 Creador de materiales de aprendizaje (contenido en base)
+
+Además del catálogo estático, desde `/admin` un **supervisor** o
+**administrador** puede publicar un *material* completo — una **lección** de
+lectura más sus **ejercicios** de práctica — sin tocar código ni desplegar.
+Los ejercicios publicados entran al SRS y a la gamificación exactamente
+igual que los estáticos.
+
+**Las dos fuentes se fusionan en tiempo de ejecución, nunca se migran.**
+`src/catalogo/CatalogoProvider.tsx` memoiza
+`fusionarDominios(DOMINIOS, remotos)` y `fusionarCategorias(...)`, y expone
+además `leccionDe(dominioId)`. Los consumidores lo leen con el hook
+`useCatalogo()`. `DOMINIOS` y `CATEGORIAS` se siguen exportando sin cambios,
+y `lib/repaso.ts` y `lib/busqueda.ts` reciben el catálogo como parámetro
+**opcional** con default a las listas estáticas: por eso todo el código
+previo y todos los tests siguen funcionando sin tocarse. Como
+`attempts.exercise_id` / `domain_id` / `objetivo_id` y `srs_cards.exercise_id`
+referencian ids como texto libre (sin FK), el historial de los 127
+ejercicios originales quedó intacto.
+
+**Tablas:** `contenido_dominios`, `contenido_objetivos`,
+`contenido_ejercicios`, `contenido_lecciones`. El administrador elige el
+*slug* del dominio y los hijos se derivan solos (`<slug>-o<N>`,
+`<slug>-e<N>`) con `siguienteNumero()` = máximo sufijo existente + 1. Los
+números **nunca se reciclan**: retirar un ejercicio es **baja lógica**
+(`activo: false`), para no romper los intentos ya registrados. La unicidad
+del slug se valida contra el catálogo **fusionado**, no solo contra la base.
+
+**RLS** con las convenciones del resto del esquema: `select` = publicado y
+activo, o creador, o `is_admin()`; `insert` = `is_supervisor()` y
+`creado_por = auth.uid()`; `update`/`delete` = admin o creador. Las tablas
+hijas heredan la visibilidad del dominio vía los helpers SECURITY DEFINER
+`contenido_dominio_visible(did text)` y `es_creador_de_dominio(did text)`.
+
+**Renderizado de las lecciones.** `src/lib/markdown.ts` es un parser propio
+(encabezados, negrita, cursiva, listas, cita, código en línea, `---`,
+enlaces) que devuelve una **estructura de datos**, no una cadena de HTML;
+`src/components/Leccion.tsx` la pinta como elementos React. **Nunca se usa
+`dangerouslySetInnerHTML`**, y no se agregó ninguna dependencia npm (lo que
+además evita tener que regenerar el `package-lock.json`, que no se puede
+pushear desde una sesión remota).
+
+**Dónde se ve:** distintivo "Incluye lección" en la grilla de Ejercicios;
+panel plegable "Leer / Ocultar" arriba de las preguntas en Práctica (oculto
+en modo repaso); bloque "Materiales de aprendizaje"
+(`src/components/AdminContenidos.tsx`) en Administración; y el buscador
+global (⌘K) indexa también el contenido publicado, con caché `WeakMap` sobre
+la identidad del array de dominios para no reindexar en cada pulsación.
+
+Pendiente (segunda entrega): **borrador asistido por IA** — pegar material de
+referencia y recibir una propuesta de lección y preguntas para revisar antes
+de publicar. La clave de API vivirá solo en un Edge Function, nunca en el
+navegador.
+
 ### 6.2 Algoritmo Leitner (`src/lib/srs.ts`)
 
 - 5 cajas; intervalo hasta el próximo repaso: **1, 2, 4, 8, 16 días**
