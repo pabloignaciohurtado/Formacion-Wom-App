@@ -76,6 +76,16 @@ por las malas.
   > pedido con esta feature; si Pablo pide "actualiza la documentación"
   > de nuevo, reconciliar esa lista contra `list_migrations` primero.
 
+  El 2026-07-28, a pedido de Pablo ("necesito que hagamos en esta misma app
+  un creador de materiales de aprendizaje"), se agregó el **creador de
+  materiales** (PR #73): desde `/admin` se publica una **lección** de lectura
+  más sus **ejercicios**, sin tocar código. El catálogo estático queda
+  intacto y el contenido nuevo vive en la base (`contenido_dominios`,
+  `contenido_objetivos`, `contenido_ejercicios`, `contenido_lecciones`),
+  **fusionándose en tiempo de ejecución** vía `src/catalogo/CatalogoProvider.tsx`
+  + `useCatalogo()` — ver DOCUMENTACION.md §6.1.1. Falta la segunda entrega:
+  borrador asistido por IA (Edge Function, clave de API solo en el servidor).
+
 ## Cómo se trabaja en este repo
 
 - **Flujo estricto:** rama de sesión → PR en borrador → CI verde → marcar
@@ -193,6 +203,24 @@ por las malas.
   con `git diff HEAD origin/<rama> --stat` (vacío = byte a byte). Ojo: los
   pushes que hace el `GITHUB_TOKEN` del workflow **no** vuelven a disparar
   workflows, así que no se puede encadenar solo.
+- **Changeset grande (>100 KB) por MCP: parche comprimido en trozos.** Cuando
+  `push_files` inline sale carísimo en tokens (18 archivos = 165 KB ≈ 45 k
+  tokens), sale mucho más barato pushear el diff comprimido:
+  `git diff origin/main HEAD --binary | gzip -9 | base64 -w0` (165 KB → 35 KB),
+  partirlo en trozos de ≤12 KB (`split -b 12000`), pushear cada trozo como
+  `tmp-cambio/parte-NN`, y luego un workflow temporal autoborrable
+  (`on: push: branches: [<rama>]`) que los concatena, **normaliza con
+  `tr -d '\n\r '`** (porque `push_files` agrega un salto de línea al final de
+  cada archivo), verifica el md5 del archivo unido con `md5sum -c -`, hace
+  `base64 -d | gunzip | git apply --binary`, borra `tmp-cambio/` y a sí mismo,
+  y commitea con un marcador (`[aplicado]`) que el propio `if:` del workflow
+  usa para no reentrar. Imprimir el `md5sum` de cada trozo en el log permite
+  identificar y repushear solo el corrupto. Verificar al final
+  `git diff HEAD origin/<rama> | wc -l == 0`.
+- **`markdown.ts` propio en vez de una librería:** el renderizador de lecciones
+  parsea a una **estructura de datos** y `Leccion.tsx` la pinta como elementos
+  React. Nunca `dangerouslySetInnerHTML`, y cero dependencias nuevas (lo que
+  evita el problema del `package-lock.json` que no se puede pushear).
 - **Playwright + mocks de Supabase:** para que `count: 'exact', head: true`
   funcione en las capturas hay que exponer el header `content-range` con
   `access-control-expose-headers` en la respuesta simulada, si no el
