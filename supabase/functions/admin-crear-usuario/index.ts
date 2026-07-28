@@ -15,10 +15,22 @@ function generarPassword(): string {
   return Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join("");
 }
 
+// El panel se sirve desde un origen distinto (GitHub Pages), así que el
+// navegador manda un preflight OPTIONS antes del POST. Sin estas cabeceras la
+// llamada muere en el navegador con "Failed to send a request to the Edge
+// Function", sin llegar nunca a ejecutar la lógica de abajo.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 }
 
@@ -27,6 +39,10 @@ function jsonResponse(body: unknown, status = 200): Response {
 // gateway (rechaza sin JWT válido) y, aquí dentro, se verifica que el JWT
 // forwardeado sea efectivamente de un admin antes de usar service_role.
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
     return jsonResponse({ error: "Método no permitido" }, 405);
   }
