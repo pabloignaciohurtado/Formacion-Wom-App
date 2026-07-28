@@ -1,0 +1,67 @@
+diff --git a/DOCUMENTACION.md b/DOCUMENTACION.md
+index d7802e9..706d5e5 100644
+--- a/DOCUMENTACION.md
++++ b/DOCUMENTACION.md
+@@ -608,12 +608,33 @@ pantallas para consistencia visual.
+ ### 10.4 Modo oscuro
+ 
+ Estrategia por **redefinición de tokens** bajo la clase `.dark` en
+-`src/index.css`: blanco→morado profundo, niebla→casi negro, tintas
++`src/index.css`: superficie→morado profundo, niebla→casi negro, tintas
+ claras. Ningún componente tiene lógica `dark:` propia — cambia solo porque
+-las variables cambian. Toggle ☀️/🌙 en el header
+-(`src/components/Layout.tsx`), persistido en `localStorage` (`tema`),
+-inicializado según `prefers-color-scheme` si el usuario no eligió antes
+-(`src/main.tsx`).
++las variables cambian.
++
++Dos tokens existen precisamente para que esa redefinición no se lleve por
++delante lo que debe seguir igual en ambos temas:
++
++- `--color-superficie` (tarjetas, barras) en vez de `white` a secas. El
++  blanco real se necesita intacto sobre el morado de marca (logo, ítem
++  activo del menú) y sobre el magenta de los botones; teñirlo dejaba esos
++  elementos casi invisibles en oscuro.
++- `--color-enlace` (texto morado: enlaces, etiquetas, íconos activos) en
++  vez de `wom-600`, que también se usa como **fondo**. En oscuro el texto
++  se aclara a `#a67fc5` (6.5:1) mientras los fondos quedan como están.
++
++**Selección de tres opciones** — Claro / Oscuro / **Automático** (sigue al
++sistema, y lo sigue en vivo: si el equipo cambia al anochecer, la app lo
++acompaña sin recargar). El selector es `src/components/SelectorTema.tsx`
++(`role="radiogroup"`), presente tanto en el header
++(`src/components/Layout.tsx`) como en el login
++(`src/components/AuthLayout.tsx`) — el tema se puede elegir antes de
++entrar. Toda la lógica vive en `src/lib/tema.ts` (leer / resolver /
++aplicar / guardar / suscribirse al sistema), cubierta por
++`src/lib/tema.test.ts`; `src/main.tsx` la aplica antes de montar React
++para que no haya destello claro. Además de la clase `.dark`, `aplicarTema`
++fija `color-scheme` (scrollbars, `<select>`, autocompletado nativos) y
++reescribe `<meta name="theme-color">` (barra del navegador en móvil).
+ 
+ ### 10.5 Animación
+ 
+@@ -707,6 +728,8 @@ src/
+     insignias.ts             # catálogo y evaluación de insignias
+     certificado.ts           # generación de certificado PNG en canvas
+     colaOffline.ts           # cola de intentos sin conexión
++    tema.ts                  # tema claro/oscuro/automático: leer, resolver, aplicar, persistir
++    tema.test.ts             # tests del módulo de tema (vitest)
+ 
+   data/
+     contenido.ts             # catálogo de dominios/objetivos/ejercicios + categorías
+@@ -714,11 +737,12 @@ src/
+     (reportes.test.ts y materiales.test.ts en lib/ cubren esos builders)
+ 
+   components/
+-    Layout.tsx                # shell (sidebar/bottom-nav, header, tema, offline sync)
++    Layout.tsx                # shell (sidebar/bottom-nav, header, selector de tema, offline sync)
+     BuscadorGlobal.tsx         # paleta de búsqueda global (⌘K) del header
+     EstadoConexion.tsx          # indicador de conexión / sincronización offline
+     AuthLayout.tsx               # panel de marca split-screen para pantallas de auth
+-    MarcaWom.tsx                  # logo/wordmark reutilizable
++    MarcaWom.tsx                  # logo/wordmark reutilizable (prop `compacta` para el header móvil)
++    SelectorTema.tsx               # selector Claro / Oscuro / Automático (header y login)
+     ui.tsx                        # Boton, Campo, Tarjeta, MensajeError, EstadoCarga, Esqueleto
+     ContadorAnimado.tsx            # número que cuenta hacia arriba (ease-out)
+     InsigniaModal.tsx               # modal de celebración (insignias y cambios de liga)
