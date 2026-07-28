@@ -586,6 +586,48 @@ export type Database = {
           },
         ]
       }
+      insignias: {
+        Row: {
+          activa: boolean
+          categoria: string
+          color_hex: string
+          creado_en: string
+          criterio: string
+          descripcion: string
+          icono: string
+          id: string
+          nombre: string
+          orden: number
+          tier: string
+        }
+        Insert: {
+          activa?: boolean
+          categoria: string
+          color_hex?: string
+          creado_en?: string
+          criterio: string
+          descripcion: string
+          icono: string
+          id: string
+          nombre: string
+          orden?: number
+          tier?: string
+        }
+        Update: {
+          activa?: boolean
+          categoria?: string
+          color_hex?: string
+          creado_en?: string
+          criterio?: string
+          descripcion?: string
+          icono?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          tier?: string
+        }
+        Relationships: []
+      }
       insignias_usuario: {
         Row: {
           insignia_id: string
@@ -986,7 +1028,7 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    ? DefaultSchema["CompositeTypes"][CompositeTypeName]
     : never
 
 export const Constants = {
