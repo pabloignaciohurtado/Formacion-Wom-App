@@ -5,7 +5,7 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import { BookOpen, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORIAS, DOMINIOS } from '../data/contenido'
 import {
@@ -15,6 +15,13 @@ import {
   validarEjercicio,
   validarSlugDominio,
 } from '../lib/catalogo'
+import {
+  MAXIMO_CARACTERES_MATERIAL,
+  MAXIMO_PREGUNTAS_PEDIDAS,
+  MINIMO_PREGUNTAS_PEDIDAS,
+  materialDesdePropuesta,
+  pedirBorradorIa,
+} from '../lib/borradorIa'
 import {
   CONTENIDO_VACIO,
   archivarMaterial,
@@ -26,7 +33,14 @@ import {
   type ContenidoRemoto,
 } from '../lib/contenidoRemoto'
 import { Leccion } from './Leccion'
-import { Boton, Campo, EstadoCarga, MensajeError, Tarjeta } from './ui'
+import {
+  Boton,
+  Campo,
+  EstadoCarga,
+  MensajeAviso,
+  MensajeError,
+  Tarjeta,
+} from './ui'
 
 const PREGUNTA_VACIA: BorradorPregunta = {
   id: null,
@@ -72,6 +86,17 @@ export function AdminContenidos() {
   const [error, setError] = useState<string | null>(null)
   const [vistaPrevia, setVistaPrevia] = useState(false)
 
+  // Borrador asistido por IA. Vive en el componente y no en el borrador
+  // porque es material de entrada: no se guarda con el material, solo sirve
+  // para producir la propuesta que después se edita a mano.
+  const [panelIa, setPanelIa] = useState(false)
+  const [fuenteIa, setFuenteIa] = useState('')
+  const [focoIa, setFocoIa] = useState('')
+  const [cantidadIa, setCantidadIa] = useState(5)
+  const [generando, setGenerando] = useState(false)
+  const [errorIa, setErrorIa] = useState<string | null>(null)
+  const [avisoIa, setAvisoIa] = useState<string | null>(null)
+
   const cargar = useCallback(async () => {
     // `false` = también los borradores propios, que son justamente los que el
     // administrador viene a terminar.
@@ -93,8 +118,17 @@ export function AdminContenidos() {
   const cambiar = (parcial: Partial<BorradorMaterial>) =>
     setBorrador((prev) => (prev ? { ...prev, ...parcial } : prev))
 
+  const limpiarIa = () => {
+    setPanelIa(false)
+    setFuenteIa('')
+    setFocoIa('')
+    setErrorIa(null)
+    setAvisoIa(null)
+  }
+
   const nuevo = () => {
     setError(null)
+    limpiarIa()
     setEditandoExistente(false)
     setBorrador(borradorVacio())
   }
@@ -108,6 +142,7 @@ export function AdminContenidos() {
       .sort((a, b) => a.orden - b.orden)
     const leccion = datos.lecciones.find((l) => l.dominio_id === slug)
     setError(null)
+    limpiarIa()
     setEditandoExistente(true)
     setBorrador({
       slug,
@@ -161,6 +196,35 @@ export function AdminContenidos() {
     return lista
   }, [borrador, editandoExistente, ocupados])
 
+  // La propuesta se funde sobre lo que ya hay en el formulario: nada se
+  // publica solo. El administrador siempre revisa y guarda a mano.
+  const generarConIa = async () => {
+    if (!borrador || generando) return
+    setGenerando(true)
+    setErrorIa(null)
+    setAvisoIa(null)
+    const { propuesta, error: problema } = await pedirBorradorIa({
+      material: fuenteIa,
+      cantidadPreguntas: cantidadIa,
+      foco: focoIa,
+    })
+    setGenerando(false)
+    if (problema || !propuesta) {
+      setErrorIa(problema ?? 'No se pudo generar el borrador.')
+      return
+    }
+    setBorrador(
+      materialDesdePropuesta(propuesta, borrador, {
+        ocupados,
+        editandoExistente,
+      })
+    )
+    setPanelIa(false)
+    setAvisoIa(
+      'Propuesta generada. Revísala completa antes de publicar: la IA puede equivocarse en cifras, plazos y nombres de planes.'
+    )
+  }
+
   const guardar = async (event: FormEvent) => {
     event.preventDefault()
     if (!borrador || !user || errores.length > 0) return
@@ -182,6 +246,7 @@ export function AdminContenidos() {
     }
     setBorrador(null)
     setEditandoExistente(false)
+    limpiarIa()
     void cargar()
   }
 
@@ -289,6 +354,111 @@ export function AdminContenidos() {
         </Boton>
       ) : (
         <Tarjeta className="mt-3">
+          {/* Borrador asistido: pegar el material de referencia y recibir una
+              propuesta que rellena el formulario de abajo. La clave de la IA
+              vive solo en la Edge Function, nunca en el navegador. */}
+          <div className="mb-5 rounded-xl border border-dashed border-gray-300 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-sm font-bold text-tinta">
+                <Sparkles className="size-4 text-enlace" />
+                Generar borrador con IA
+              </p>
+              <button
+                type="button"
+                onClick={() => setPanelIa((v) => !v)}
+                aria-expanded={panelIa}
+                className="text-sm font-semibold text-enlace underline underline-offset-2"
+              >
+                {panelIa ? 'Ocultar' : 'Abrir'}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-tinta-suave">
+              Pega un instructivo, un correo de campaña o un procedimiento y la
+              IA propone la lección y las preguntas. Nada se publica solo:
+              siempre revisas y guardas tú.
+            </p>
+
+            {panelIa && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label
+                    htmlFor="ia-fuente"
+                    className="text-sm font-semibold text-tinta"
+                  >
+                    Material de referencia
+                  </label>
+                  <textarea
+                    id="ia-fuente"
+                    rows={8}
+                    value={fuenteIa}
+                    maxLength={MAXIMO_CARACTERES_MATERIAL}
+                    onChange={(e) => setFuenteIa(e.target.value)}
+                    placeholder="Pega aquí el procedimiento, la minuta de la campaña o el instructivo…"
+                    className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                  />
+                  <p className="mt-1 text-xs text-tinta-suave">
+                    {fuenteIa.length.toLocaleString('es-CL')} de{' '}
+                    {MAXIMO_CARACTERES_MATERIAL.toLocaleString('es-CL')}{' '}
+                    caracteres
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <Campo
+                    etiqueta="Enfoque (opcional)"
+                    id="ia-foco"
+                    value={focoIa}
+                    placeholder="Ej.: objeciones de precio en clientes que piden portabilidad"
+                    onChange={(e) => setFocoIa(e.target.value)}
+                  />
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="ia-cantidad"
+                      className="block text-sm font-semibold text-tinta"
+                    >
+                      Preguntas
+                    </label>
+                    <input
+                      id="ia-cantidad"
+                      type="number"
+                      min={MINIMO_PREGUNTAS_PEDIDAS}
+                      max={MAXIMO_PREGUNTAS_PEDIDAS}
+                      value={cantidadIa}
+                      onChange={(e) => setCantidadIa(Number(e.target.value))}
+                      className="w-24 rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-tinta transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                  </div>
+                </div>
+
+                {errorIa && <MensajeError>{errorIa}</MensajeError>}
+
+                <Boton
+                  type="button"
+                  variante="secundario"
+                  disabled={generando || fuenteIa.trim().length < 40}
+                  onClick={() => void generarConIa()}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Sparkles className="size-4" />
+                    {generando ? 'Generando…' : 'Generar propuesta'}
+                  </span>
+                </Boton>
+                {generando && (
+                  <p className="text-xs text-tinta-suave" role="status">
+                    Redactando la lección y las preguntas. Puede tardar hasta un
+                    minuto.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {avisoIa && (
+              <div className="mt-3">
+                <MensajeAviso>{avisoIa}</MensajeAviso>
+              </div>
+            )}
+          </div>
+
           <form onSubmit={guardar} className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -650,6 +820,7 @@ export function AdminContenidos() {
                 onClick={() => {
                   setBorrador(null)
                   setEditandoExistente(false)
+                  limpiarIa()
                 }}
               >
                 Cancelar

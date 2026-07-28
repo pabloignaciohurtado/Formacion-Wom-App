@@ -333,10 +333,41 @@ en modo repaso); bloque "Materiales de aprendizaje"
 global (⌘K) indexa también el contenido publicado, con caché `WeakMap` sobre
 la identidad del array de dominios para no reindexar en cada pulsación.
 
-Pendiente (segunda entrega): **borrador asistido por IA** — pegar material de
-referencia y recibir una propuesta de lección y preguntas para revisar antes
-de publicar. La clave de API vivirá solo en un Edge Function, nunca en el
-navegador.
+### 6.1.2 Borrador asistido por IA (`generar-borrador-material`)
+
+Dentro del creador, el botón **"Generar borrador con IA"** abre un panel donde
+se pega material de referencia (un instructivo, la minuta de una campaña, un
+procedimiento), opcionalmente un enfoque y la cantidad de preguntas. La
+respuesta **rellena el formulario**: no publica nada. El aviso ámbar posterior
+lo dice explícitamente, porque el riesgo real de esta función no es técnico
+sino de contenido: una cifra inventada que llega a producción es peor que no
+tener la función.
+
+**La clave de API vive solo en el servidor.** El navegador nunca la ve: llama
+a la Edge Function `supabase/functions/generar-borrador-material` con el JWT
+del usuario, y es la función la que habla con la API de Anthropic usando el
+secreto `ANTHROPIC_API_KEY` del proyecto Supabase (el modelo se puede cambiar
+con el secreto opcional `MODELO_IA`). Sin ese secreto la función responde
+`503` con un mensaje que dice exactamente dónde configurarlo.
+
+**Tres guardias antes de gastar cuota:** `verify_jwt` en el gateway, la
+verificación de que el perfil sea `supervisor` o `admin` — el mismo criterio
+que la RLS de `contenido_dominios`: quien no puede publicar tampoco genera —,
+y límites duros de tamaño (24 000 caracteres de material, 1 a 12 preguntas).
+Los errores del proveedor se registran en el log de la función pero **nunca se
+devuelven crudos al cliente**: llega solo un mensaje accionable en español.
+
+**La respuesta de un modelo es texto, no un contrato.** El esquema se declara
+como herramienta con `tool_choice` forzado, que es la forma fiable de recibir
+JSON válido; y aun así `src/lib/borradorIa.ts` la normaliza en código puro y
+probado (`materialDesdePropuesta`): acota el índice de la alternativa correcta
+y el del objetivo asociado al rango real, recorta objetivos y alternativas a
+los máximos del formulario, descarta preguntas sin enunciado o con una sola
+alternativa, corta el ícono por *grapheme* para no partir un emoji, y conserva
+lo que el administrador ya había escrito cuando la IA no propone ese campo. El
+slug se deriva del título y se sufija `-2`, `-3`… si choca con uno existente;
+**editando un material ya creado el slug nunca cambia**, porque lo referencian
+los `attempts` y las tarjetas de repaso.
 
 ### 6.2 Algoritmo Leitner (`src/lib/srs.ts`)
 
