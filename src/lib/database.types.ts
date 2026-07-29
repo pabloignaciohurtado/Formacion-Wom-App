@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      actividad_materiales: {
+        Row: {
+          actividad_id: string
+          agregado_en: string
+          material_id: string
+        }
+        Insert: {
+          actividad_id: string
+          agregado_en?: string
+          material_id: string
+        }
+        Update: {
+          actividad_id?: string
+          agregado_en?: string
+          material_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividad_materiales_actividad_id_fkey"
+            columns: ["actividad_id"]
+            isOneToOne: false
+            referencedRelation: "actividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividad_materiales_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materiales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       actividades: {
         Row: {
           activa: boolean
@@ -121,39 +154,6 @@ export type Database = {
           },
         ]
       }
-      actividad_materiales: {
-        Row: {
-          actividad_id: string
-          agregado_en: string
-          material_id: string
-        }
-        Insert: {
-          actividad_id: string
-          agregado_en?: string
-          material_id: string
-        }
-        Update: {
-          actividad_id?: string
-          agregado_en?: string
-          material_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "actividad_materiales_actividad_id_fkey"
-            columns: ["actividad_id"]
-            isOneToOne: false
-            referencedRelation: "actividades"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "actividad_materiales_material_id_fkey"
-            columns: ["material_id"]
-            isOneToOne: false
-            referencedRelation: "materiales"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       activity_events: {
         Row: {
           detalle: string | null
@@ -191,6 +191,7 @@ export type Database = {
       }
       attempts: {
         Row: {
+          confianza: boolean | null
           correcto: boolean
           domain_id: string
           exercise_id: string
@@ -201,6 +202,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          confianza?: boolean | null
           correcto: boolean
           domain_id: string
           exercise_id: string
@@ -211,6 +213,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          confianza?: boolean | null
           correcto?: boolean
           domain_id?: string
           exercise_id?: string
@@ -544,6 +547,27 @@ export type Database = {
         }
         Relationships: []
       }
+      funcionalidades: {
+        Row: {
+          descripcion: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          descripcion?: string
+          id: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          descripcion?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           asignada_por: string | null
@@ -704,6 +728,42 @@ export type Database = {
           },
         ]
       }
+      perfil_funcionalidades: {
+        Row: {
+          actualizado_en: string
+          funcionalidad_id: string
+          habilitado: boolean
+          profile_id: string
+        }
+        Insert: {
+          actualizado_en?: string
+          funcionalidad_id: string
+          habilitado?: boolean
+          profile_id: string
+        }
+        Update: {
+          actualizado_en?: string
+          funcionalidad_id?: string
+          habilitado?: boolean
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfil_funcionalidades_funcionalidad_id_fkey"
+            columns: ["funcionalidad_id"]
+            isOneToOne: false
+            referencedRelation: "funcionalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfil_funcionalidades_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           activo: boolean
@@ -834,7 +894,7 @@ export type Database = {
       }
       mi_racha: { Args: never; Returns: number }
       precision_por_dominio: {
-        Args: never
+        Args: { desde?: string; hasta?: string }
         Returns: {
           correctas: number
           domain_id: string
@@ -892,7 +952,7 @@ export type Database = {
         }[]
       }
       resumen_equipo: {
-        Args: never
+        Args: { desde?: string; hasta?: string }
         Returns: {
           correctas: number
           intentos: number
@@ -902,6 +962,16 @@ export type Database = {
           ultima_actividad: string
           user_id: string
           xp: number
+        }[]
+      }
+      tendencia_equipo: {
+        Args: { semanas?: number }
+        Returns: {
+          activos: number
+          correctas: number
+          intentos: number
+          precision_pct: number
+          semana: string
         }[]
       }
     }
