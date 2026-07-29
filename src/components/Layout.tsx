@@ -5,6 +5,7 @@ import { EASE_OUT } from '../lib/motion'
 import {
   LayoutDashboard,
   Trophy,
+  Award,
   Dumbbell,
   ClipboardCheck,
   MessageCircleQuestion,
@@ -26,6 +27,7 @@ const enlaces = [
   { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
   { a: '/ejercicios', texto: 'Ejercicios', Icono: Dumbbell },
   { a: '/liga', texto: 'Liga', Icono: Trophy },
+  { a: '/premios', texto: 'Premios', Icono: Award },
   { a: '/actividades', texto: 'Actividades', Icono: ClipboardCheck },
   { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion },
 ]

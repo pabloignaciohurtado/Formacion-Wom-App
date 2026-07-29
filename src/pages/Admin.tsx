@@ -8,6 +8,7 @@ import { AdminContenidos } from '../components/AdminContenidos'
 import { AdminCrearUsuario } from '../components/AdminCrearUsuario'
 import { AdminEquipo } from '../components/AdminEquipo'
 import { AdminMateriales } from '../components/AdminMateriales'
+import { AdminOtorgarInsignias } from '../components/AdminOtorgarInsignias'
 import {
   etiquetaRol,
   puedeAsignar,
@@ -228,6 +229,8 @@ export default function Admin() {
       )}
 
       <AdminEquipo />
+
+      <AdminOtorgarInsignias />
 
       <AdminMateriales />
 

@@ -12,11 +12,12 @@ import { LIGAS, ligaDe, nivelDe, xpTotal } from '../lib/gamificacion'
 import { DOMINIOS } from '../data/contenido'
 import { maestriaDominio } from '../lib/srs'
 import { EASE_OUT, STAGGER } from '../lib/motion'
+import { sincronizarInsignias, type Insignia } from '../lib/insignias'
 import {
-  INSIGNIAS,
-  sincronizarInsignias,
-  type Insignia,
-} from '../lib/insignias'
+  cargarUltimasInsignias,
+  contarCatalogoActivo,
+  type UltimaInsignia,
+} from '../lib/catalogoInsignias'
 
 interface Datos {
   intentos: number
@@ -29,6 +30,8 @@ interface Datos {
   ranking: { user_id: string; posicion: number; compiten: number }[]
   heroes: { nombre: string }[]
   insignias: Set<string>
+  totalInsignias: number
+  ultimasInsignias: UltimaInsignia[]
 }
 
 export default function Panel() {
@@ -60,6 +63,8 @@ export default function Panel() {
         actividades,
         completadas,
         obtenidas,
+        totalInsignias,
+        ultimasInsignias,
       ] = await Promise.all([
         supabase
           .from('attempts')
@@ -88,6 +93,8 @@ export default function Panel() {
           .from('insignias_usuario')
           .select('insignia_id')
           .eq('user_id', user.id),
+        contarCatalogoActivo(),
+        cargarUltimasInsignias(user.id, 4),
       ])
       if (cancelado) return
 
@@ -100,6 +107,8 @@ export default function Panel() {
         ranking: ranking.data ?? [],
         heroes: heroes.data ?? [],
         insignias,
+        totalInsignias,
+        ultimasInsignias,
       })
 
       // Evaluar y otorgar insignias nuevas
@@ -326,29 +335,36 @@ export default function Panel() {
         </Link>
       </Tarjeta>
 
-      {/* Vitrina de insignias */}
+      {/* Teaser del álbum de premios: el detalle completo (insignias de
+          desempeño y de formación, agrupadas por categoría, con criterio de
+          cada una) vive en /premios, su propia pantalla. */}
       <h2 className="mt-8 text-lg font-bold">Tus insignias</h2>
-      <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-9">
-        {INSIGNIAS.map((insignia) => {
-          const obtenida = datos.insignias.has(insignia.id)
-          return (
-            <Tarjeta
-              key={insignia.id}
-              className={`flex flex-col items-center gap-1 p-3 text-center ${
-                obtenida ? '' : 'opacity-45 grayscale'
-              }`}
-            >
-              <span className="text-3xl">{obtenida ? insignia.icono : '🔒'}</span>
-              <span className="text-xs font-bold leading-tight">
-                {insignia.nombre}
-              </span>
-              <span className="text-[10px] leading-tight text-tinta-suave">
-                {insignia.descripcion}
-              </span>
-            </Tarjeta>
-          )
-        })}
-      </div>
+      <Tarjeta className="mt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold">
+            <strong className="text-enlace">{datos.insignias.size}</strong> de{' '}
+            {datos.totalInsignias} obtenidas
+          </p>
+          <Link
+            to="/premios"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-enlace hover:underline"
+          >
+            Ver mi álbum completo <ExternalLink className="size-3.5" />
+          </Link>
+        </div>
+        {datos.ultimasInsignias.length > 0 && (
+          <div className="mt-4 grid grid-cols-4 gap-3">
+            {datos.ultimasInsignias.map((u) => (
+              <div key={u.insignia.id} className="flex flex-col items-center gap-1 text-center">
+                <span className="text-3xl">{u.insignia.icono}</span>
+                <span className="text-[10px] font-bold leading-tight">
+                  {u.insignia.nombre}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Tarjeta>
 
       <InsigniaModal
         insignia={colaInsignias[0] ?? null}
