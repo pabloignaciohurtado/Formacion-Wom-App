@@ -6,7 +6,9 @@ import { COLORES_WOM, tSpring } from '../lib/motion'
 import { Boton } from './ui'
 
 // Trazabilidad de un otorgamiento manual (insignias de desempeño, no las
-// de formación auto-otorgadas): quién la dio, cuándo, y por qué.
+// de formación auto-otorgadas): quién la dio, cuándo, y por qué. Una
+// insignia otorgada más de una vez ("xN") trae una entrada por ocurrencia,
+// más reciente primero.
 export interface TrazabilidadInsignia {
   nombreAdmin: string
   fecha: string
@@ -18,11 +20,15 @@ export function InsigniaModal({
   onCerrar,
   titulo = '¡Nueva insignia!',
   trazabilidad,
+  veces,
 }: {
   insignia: Insignia | null
   onCerrar: () => void
   titulo?: string
-  trazabilidad?: TrazabilidadInsignia | null
+  trazabilidad?: TrazabilidadInsignia[] | null
+  // Cuántas veces se otorgó esta insignia (soporte "xN"). Sin valor u ≤1 no
+  // se muestra ningún indicador de repetición.
+  veces?: number
 }) {
   const reduce = useReducedMotion()
   useEffect(() => {
@@ -65,18 +71,29 @@ export function InsigniaModal({
             >
               {insignia.icono}
             </m.div>
-            <h2 className="mt-4 text-2xl font-extrabold">{insignia.nombre}</h2>
+            <h2 className="mt-4 text-2xl font-extrabold">
+              {insignia.nombre}
+              {veces && veces > 1 && (
+                <span className="ml-2 rounded-full bg-magenta-500/15 px-2.5 py-0.5 align-middle text-sm font-bold text-magenta-500">
+                  x{veces}
+                </span>
+              )}
+            </h2>
             <p className="mt-1 text-tinta-suave">{insignia.descripcion}</p>
-            {trazabilidad && (
-              <p className="mt-3 text-xs text-tinta-suave">
-                Otorgada por <strong>{trazabilidad.nombreAdmin}</strong> el{' '}
-                {new Date(trazabilidad.fecha).toLocaleDateString('es-CL', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                })}
-                {trazabilidad.nota && <> — "{trazabilidad.nota}"</>}
-              </p>
+            {trazabilidad && trazabilidad.length > 0 && (
+              <ul className="mt-3 space-y-1.5 text-left">
+                {trazabilidad.map((t, i) => (
+                  <li key={i} className="text-xs text-tinta-suave">
+                    Otorgada por <strong>{t.nombreAdmin}</strong> el{' '}
+                    {new Date(t.fecha).toLocaleDateString('es-CL', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                    {t.nota && <> — "{t.nota}"</>}
+                  </li>
+                ))}
+              </ul>
             )}
             <Boton type="button" className="mt-6 w-full" onClick={onCerrar}>
               ¡Genial!
