@@ -143,6 +143,18 @@ body::after {
   }
 }
 
+/* ── Barra de navegación inferior móvil deslizable ───────────────
+   Oculta la barra de scroll visualmente (queda funcional, solo
+   invisible) para que el deslizamiento horizontal no se vea como un
+   elemento de scroll de escritorio en un menú de navegación táctil. */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Edge/IE viejos */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, navegadores basados en WebKit/Blink */
+}
+
 /* ── Accesibilidad: respetar la preferencia del sistema ──────────
    Complementa el guard de JS (useReducedMotion + disableForReducedMotion).
    Degrada a estado final: sin loops, sin transforms largos. */
