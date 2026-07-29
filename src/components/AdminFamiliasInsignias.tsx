@@ -45,9 +45,15 @@ function medallaVacia(): FormMedalla {
 // el `id` de texto libre que usan tanto `familias_insignias` como cada
 // medalla de `insignias` (`<slug>-<tier>`).
 function slugificar(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+  return Array.from(texto.normalize('NFD'))
+    .filter((c) => {
+      const codigo = c.codePointAt(0) ?? 0
+      // Rango de marcas diacríticas combinantes (acentos, tildes); se evita un
+      // escape unicode literal en el regex por ambigüedades de codificación
+      // al transferir este archivo por herramientas externas.
+      return codigo < 0x0300 || codigo > 0x036f
+    })
+    .join('')
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
