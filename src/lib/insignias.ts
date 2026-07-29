@@ -53,9 +53,35 @@ export async function sincronizarInsignias(
   const { error } = await supabase
     .from('insignias_usuario')
     .upsert(
-      nuevas.map((insignia_id) => ({ user_id: userId, insignia_id })),
+      // otorgado_por explícito en null: es el sistema evaluando reglas
+      // (evaluarInsignias()), no un admin otorgando a mano. auth.uid() aquí
+      // sería incorrecto (el usuario no se "otorga a sí mismo").
+      nuevas.map((insignia_id) => ({ user_id: userId, insignia_id, otorgado_por: null })),
       { onConflict: 'user_id,insignia_id', ignoreDuplicates: true }
     )
   if (error) return []
   return INSIGNIAS.filter((i) => nuevas.includes(i.id))
+}
+
+// Otorgamiento manual de una insignia de desempeño por un admin (ver
+// AdminOtorgarInsignias.tsx). A diferencia de sincronizarInsignias(),
+// `otorgado_por` SIEMPRE queda con el uuid del admin que ejecuta la acción:
+// es la garantía de que ningún otorgamiento manual queda sin autor
+// identificable en la base.
+export async function otorgarInsigniaManual(
+  userId: string,
+  insigniaId: string,
+  otorgadoPor: string,
+  nota?: string | null
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('insignias_usuario').upsert(
+    {
+      user_id: userId,
+      insignia_id: insigniaId,
+      otorgado_por: otorgadoPor,
+      nota: nota?.trim() || null,
+    },
+    { onConflict: 'user_id,insignia_id', ignoreDuplicates: true }
+  )
+  return { error: error?.message ?? null }
 }

@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react'
 import { m, useReducedMotion } from 'motion/react'
 import { useAuth } from '../auth/useAuth'
 import { Esqueleto, Tarjeta } from '../components/ui'
-import { InsigniaModal } from '../components/InsigniaModal'
+import { InsigniaModal, type TrazabilidadInsignia } from '../components/InsigniaModal'
 import { EASE_OUT, STAGGER } from '../lib/motion'
 import {
   agruparPorCategoria,
@@ -80,6 +80,7 @@ export default function AlbumPremios() {
   const reduce = useReducedMotion()
   const [datos, setDatos] = useState<AlbumInsignias | null>(null)
   const [seleccion, setSeleccion] = useState<Insignia | null>(null)
+  const [trazabilidad, setTrazabilidad] = useState<TrazabilidadInsignia | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -149,14 +150,28 @@ export default function AlbumPremios() {
                 insignia={insignia}
                 indice={i}
                 reduce={!!reduce}
-                onAbrir={() =>
+                onAbrir={() => {
                   setSeleccion({
                     id: insignia.id,
                     nombre: insignia.nombre,
                     descripcion: insignia.descripcion,
                     icono: insignia.icono,
                   })
-                }
+                  // Trazabilidad de auditoría: solo aplica a insignias de
+                  // desempeño otorgadas a mano (no a las de formación,
+                  // auto-otorgadas por el sistema).
+                  setTrazabilidad(
+                    insignia.categoria !== 'formacion' &&
+                      insignia.otorgadoPorNombre &&
+                      insignia.obtenidaEn
+                      ? {
+                          nombreAdmin: insignia.otorgadoPorNombre,
+                          fecha: insignia.obtenidaEn,
+                          nota: insignia.nota,
+                        }
+                      : null
+                  )
+                }}
               />
             ))}
           </div>
@@ -166,7 +181,11 @@ export default function AlbumPremios() {
       <InsigniaModal
         insignia={seleccion}
         titulo="Insignia obtenida"
-        onCerrar={() => setSeleccion(null)}
+        trazabilidad={trazabilidad}
+        onCerrar={() => {
+          setSeleccion(null)
+          setTrazabilidad(null)
+        }}
       />
     </section>
   )

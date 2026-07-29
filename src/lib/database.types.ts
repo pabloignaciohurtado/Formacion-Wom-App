@@ -709,20 +709,33 @@ export type Database = {
       insignias_usuario: {
         Row: {
           insignia_id: string
+          nota: string | null
           obtenida_en: string
+          otorgado_por: string | null
           user_id: string
         }
         Insert: {
           insignia_id: string
+          nota?: string | null
           obtenida_en?: string
+          otorgado_por?: string | null
           user_id: string
         }
         Update: {
           insignia_id?: string
+          nota?: string | null
           obtenida_en?: string
+          otorgado_por?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "insignias_usuario_otorgado_por_fkey"
+            columns: ["otorgado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "insignias_usuario_user_id_fkey"
             columns: ["user_id"]

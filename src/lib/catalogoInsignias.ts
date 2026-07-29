@@ -13,6 +13,20 @@ export type InsigniaCatalogo = Tables<'insignias'>
 export interface InsigniaConEstado extends InsigniaCatalogo {
   obtenida: boolean
   obtenidaEn: string | null
+  // Trazabilidad de otorgamiento manual (categorías de desempeño, no
+  // 'formacion'): nombre del admin que la otorgó y su nota opcional. Ambos
+  // quedan en null para insignias auto-otorgadas por el sistema o fuera de
+  // este flujo.
+  otorgadoPorNombre: string | null
+  nota: string | null
+}
+
+// Detalle de una insignia obtenida: fecha, y si fue un otorgamiento manual
+// de admin, quién la otorgó y por qué.
+export interface DetalleObtenida {
+  obtenidaEn: string
+  otorgadoPorNombre: string | null
+  nota: string | null
 }
 
 export const ETIQUETAS_CATEGORIA: Record<string, string> = {
@@ -54,27 +68,50 @@ export async function cargarCatalogoInsignias(): Promise<InsigniaCatalogo[]> {
   return data ?? []
 }
 
-// Devuelve un mapa insignia_id -> fecha de obtención, para el usuario dado.
+// Devuelve un mapa insignia_id -> detalle de obtención (fecha y, si fue un
+// otorgamiento manual, quién lo hizo), para el usuario dado. El nombre del
+// admin se resuelve con un join contra `profiles` vía la FK `otorgado_por`
+// (alias explícito porque `insignias_usuario` tiene dos FKs hacia
+// `profiles`: `user_id` y `otorgado_por`).
 export async function cargarInsigniasObtenidas(
   userId: string
-): Promise<Map<string, string>> {
+): Promise<Map<string, DetalleObtenida>> {
   const { data, error } = await supabase
     .from('insignias_usuario')
-    .select('insignia_id, obtenida_en')
+    .select(
+      'insignia_id, obtenida_en, nota, otorgado_por, admin:profiles!insignias_usuario_otorgado_por_fkey(nombre)'
+    )
     .eq('user_id', userId)
   if (error || !data) return new Map()
-  return new Map(data.map((d) => [d.insignia_id, d.obtenida_en]))
+  return new Map(
+    data.map((d) => {
+      const admin = d.admin as unknown as { nombre: string } | null
+      return [
+        d.insignia_id,
+        {
+          obtenidaEn: d.obtenida_en,
+          otorgadoPorNombre: admin?.nombre ?? null,
+          nota: d.nota,
+        },
+      ]
+    })
+  )
 }
 
 export function combinarInsignias(
   catalogo: InsigniaCatalogo[],
-  obtenidas: Map<string, string>
+  obtenidas: Map<string, DetalleObtenida>
 ): InsigniaConEstado[] {
-  return catalogo.map((i) => ({
-    ...i,
-    obtenida: obtenidas.has(i.id),
-    obtenidaEn: obtenidas.get(i.id) ?? null,
-  }))
+  return catalogo.map((i) => {
+    const detalle = obtenidas.get(i.id)
+    return {
+      ...i,
+      obtenida: obtenidas.has(i.id),
+      obtenidaEn: detalle?.obtenidaEn ?? null,
+      otorgadoPorNombre: detalle?.otorgadoPorNombre ?? null,
+      nota: detalle?.nota ?? null,
+    }
+  })
 }
 
 export interface GrupoCategoria {
