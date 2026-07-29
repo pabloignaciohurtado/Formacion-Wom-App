@@ -4,8 +4,17 @@ import {
   combinarInsignias,
   etiquetaCategoria,
   ORDEN_CATEGORIAS,
+  type DetalleObtenida,
   type InsigniaCatalogo,
 } from './catalogoInsignias'
+
+function detalle(p: Partial<DetalleObtenida> & { obtenidaEn: string }): DetalleObtenida {
+  return {
+    obtenidaEn: p.obtenidaEn,
+    otorgadoPorNombre: p.otorgadoPorNombre ?? null,
+    nota: p.nota ?? null,
+  }
+}
 
 function insignia(p: Partial<InsigniaCatalogo> & { id: string }): InsigniaCatalogo {
   return {
@@ -26,16 +35,45 @@ function insignia(p: Partial<InsigniaCatalogo> & { id: string }): InsigniaCatalo
 describe('combinarInsignias', () => {
   it('marca como obtenidas solo las que están en el mapa', () => {
     const catalogo = [insignia({ id: 'a' }), insignia({ id: 'b' })]
-    const obtenidas = new Map([['a', '2026-01-02T00:00:00Z']])
+    const obtenidas = new Map([['a', detalle({ obtenidaEn: '2026-01-02T00:00:00Z' })]])
     const resultado = combinarInsignias(catalogo, obtenidas)
     expect(resultado.find((i) => i.id === 'a')).toMatchObject({
       obtenida: true,
       obtenidaEn: '2026-01-02T00:00:00Z',
+      otorgadoPorNombre: null,
     })
     expect(resultado.find((i) => i.id === 'b')).toMatchObject({
       obtenida: false,
       obtenidaEn: null,
+      otorgadoPorNombre: null,
     })
+  })
+
+  it('conserva quién otorgó una insignia manualmente y su nota', () => {
+    const catalogo = [insignia({ id: 'venta-1', categoria: 'ventas' })]
+    const obtenidas = new Map([
+      [
+        'venta-1',
+        detalle({
+          obtenidaEn: '2026-02-01T00:00:00Z',
+          otorgadoPorNombre: 'Ana Admin',
+          nota: 'Mejor cierre del mes',
+        }),
+      ],
+    ])
+    const resultado = combinarInsignias(catalogo, obtenidas)
+    expect(resultado[0]).toMatchObject({
+      otorgadoPorNombre: 'Ana Admin',
+      nota: 'Mejor cierre del mes',
+    })
+  })
+
+  it('una insignia auto-otorgada por el sistema no tiene admin ni nota', () => {
+    const catalogo = [insignia({ id: 'form-1', categoria: 'formacion' })]
+    const obtenidas = new Map([['form-1', detalle({ obtenidaEn: '2026-01-01T00:00:00Z' })]])
+    const resultado = combinarInsignias(catalogo, obtenidas)
+    expect(resultado[0].otorgadoPorNombre).toBeNull()
+    expect(resultado[0].nota).toBeNull()
   })
 
   it('sin insignias obtenidas, todo queda en false', () => {
