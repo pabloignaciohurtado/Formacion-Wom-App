@@ -29,23 +29,28 @@ function insignia(p: Partial<InsigniaCatalogo> & { id: string }): InsigniaCatalo
     activa: p.activa ?? true,
     orden: p.orden ?? 0,
     creado_en: p.creado_en ?? '2026-01-01T00:00:00Z',
+    titulo: p.titulo ?? null,
+    umbral: p.umbral ?? null,
+    familia_id: p.familia_id ?? null,
   }
 }
 
 describe('combinarInsignias', () => {
   it('marca como obtenidas solo las que están en el mapa', () => {
     const catalogo = [insignia({ id: 'a' }), insignia({ id: 'b' })]
-    const obtenidas = new Map([['a', detalle({ obtenidaEn: '2026-01-02T00:00:00Z' })]])
+    const obtenidas = new Map([['a', [detalle({ obtenidaEn: '2026-01-02T00:00:00Z' })]]])
     const resultado = combinarInsignias(catalogo, obtenidas)
     expect(resultado.find((i) => i.id === 'a')).toMatchObject({
       obtenida: true,
       obtenidaEn: '2026-01-02T00:00:00Z',
       otorgadoPorNombre: null,
+      veces: 1,
     })
     expect(resultado.find((i) => i.id === 'b')).toMatchObject({
       obtenida: false,
       obtenidaEn: null,
       otorgadoPorNombre: null,
+      veces: 0,
     })
   })
 
@@ -54,11 +59,13 @@ describe('combinarInsignias', () => {
     const obtenidas = new Map([
       [
         'venta-1',
-        detalle({
-          obtenidaEn: '2026-02-01T00:00:00Z',
-          otorgadoPorNombre: 'Ana Admin',
-          nota: 'Mejor cierre del mes',
-        }),
+        [
+          detalle({
+            obtenidaEn: '2026-02-01T00:00:00Z',
+            otorgadoPorNombre: 'Ana Admin',
+            nota: 'Mejor cierre del mes',
+          }),
+        ],
       ],
     ])
     const resultado = combinarInsignias(catalogo, obtenidas)
@@ -70,7 +77,7 @@ describe('combinarInsignias', () => {
 
   it('una insignia auto-otorgada por el sistema no tiene admin ni nota', () => {
     const catalogo = [insignia({ id: 'form-1', categoria: 'formacion' })]
-    const obtenidas = new Map([['form-1', detalle({ obtenidaEn: '2026-01-01T00:00:00Z' })]])
+    const obtenidas = new Map([['form-1', [detalle({ obtenidaEn: '2026-01-01T00:00:00Z' })]]])
     const resultado = combinarInsignias(catalogo, obtenidas)
     expect(resultado[0].otorgadoPorNombre).toBeNull()
     expect(resultado[0].nota).toBeNull()
@@ -80,6 +87,25 @@ describe('combinarInsignias', () => {
     const catalogo = [insignia({ id: 'a' })]
     const resultado = combinarInsignias(catalogo, new Map())
     expect(resultado[0].obtenida).toBe(false)
+  })
+
+  it('soporte "xN": varias ocurrencias de la misma insignia se cuentan y se listan todas', () => {
+    const catalogo = [insignia({ id: 'venta-1', categoria: 'ventas' })]
+    const obtenidas = new Map([
+      [
+        'venta-1',
+        [
+          detalle({ obtenidaEn: '2026-03-01T00:00:00Z', otorgadoPorNombre: 'Ana Admin' }),
+          detalle({ obtenidaEn: '2026-02-01T00:00:00Z', otorgadoPorNombre: 'Ana Admin' }),
+          detalle({ obtenidaEn: '2026-01-01T00:00:00Z', otorgadoPorNombre: 'Beto Admin' }),
+        ],
+      ],
+    ])
+    const resultado = combinarInsignias(catalogo, obtenidas)
+    expect(resultado[0].veces).toBe(3)
+    expect(resultado[0].ocurrencias).toHaveLength(3)
+    // La fecha/admin mostrados "por defecto" son los de la más reciente.
+    expect(resultado[0].obtenidaEn).toBe('2026-03-01T00:00:00Z')
   })
 })
 
