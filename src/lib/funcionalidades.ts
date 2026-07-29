@@ -286,3 +286,42 @@ export async function asignarGrupoAUsuarios(
   if (error) return { error: error.message }
   return { error: null }
 }
+
+// Acción masiva de la asignación por grupo: en vez de asignar/quitar un
+// grupo entero, toca UNA sola funcionalidad para varios usuarios a la vez
+// (ej. "deshabilita Consultas para todo este equipo"). Igual que
+// `guardarAccesosPerfil`, escribe/borra en `perfil_funcionalidades` (el
+// override individual, máxima prioridad en la cascada de `tieneAcceso`),
+// pero en batch: un solo upsert o un solo delete para todos los IDs, en vez
+// de N llamadas secuenciales.
+export type AccionFuncionalidadMasiva = 'habilitar' | 'deshabilitar' | 'quitar_excepcion'
+
+export async function aplicarFuncionalidadAUsuarios(
+  usuarioIds: string[],
+  funcionalidadId: string,
+  accion: AccionFuncionalidadMasiva
+): Promise<{ actualizados: number; error: string | null }> {
+  if (usuarioIds.length === 0) return { actualizados: 0, error: null }
+
+  if (accion === 'quitar_excepcion') {
+    const { error } = await supabase
+      .from('perfil_funcionalidades')
+      .delete()
+      .eq('funcionalidad_id', funcionalidadId)
+      .in('profile_id', usuarioIds)
+    if (error) return { actualizados: 0, error: error.message }
+    return { actualizados: usuarioIds.length, error: null }
+  }
+
+  const habilitado = accion === 'habilitar'
+  const { error } = await supabase.from('perfil_funcionalidades').upsert(
+    usuarioIds.map((profile_id) => ({
+      profile_id,
+      funcionalidad_id: funcionalidadId,
+      habilitado,
+    })),
+    { onConflict: 'profile_id,funcionalidad_id' }
+  )
+  if (error) return { actualizados: 0, error: error.message }
+  return { actualizados: usuarioIds.length, error: null }
+}

@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { tieneAcceso } from './funcionalidades'
+import { describe, expect, it, vi } from 'vitest'
+import { aplicarFuncionalidadAUsuarios, tieneAcceso } from './funcionalidades'
+
+vi.mock('./supabase', () => ({
+  supabase: {
+    from: vi.fn(),
+  },
+}))
 
 // Cascada de resolución de acceso (ver comentario de cabecera en
 // `funcionalidades.ts`): 1) override individual, 2) grupo de acceso,
@@ -35,5 +41,79 @@ describe('tieneAcceso', () => {
     expect(tieneAcceso(overrides, null, 'liga')).toBe(false)
     expect(tieneAcceso(overrides, null, 'ejercicios')).toBe(true)
     expect(tieneAcceso(overrides, null, 'consultas')).toBe(true)
+  })
+})
+
+// Acción masiva: toca `perfil_funcionalidades` (el override individual) para
+// varios usuarios de una sola vez, en batch (un solo upsert/delete, no N
+// llamadas).
+describe('aplicarFuncionalidadAUsuarios', () => {
+  it('sin usuarios seleccionados, no llama a supabase', async () => {
+    const { supabase } = await import('./supabase')
+    const resultado = await aplicarFuncionalidadAUsuarios([], 'premios', 'habilitar')
+    expect(resultado).toEqual({ actualizados: 0, error: null })
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('"habilitar" hace un solo upsert con habilitado=true para todos los IDs', async () => {
+    const { supabase } = await import('./supabase')
+    const upsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(supabase.from).mockReturnValue({ upsert } as never)
+
+    const resultado = await aplicarFuncionalidadAUsuarios(['u1', 'u2'], 'premios', 'habilitar')
+
+    expect(supabase.from).toHaveBeenCalledWith('perfil_funcionalidades')
+    expect(upsert).toHaveBeenCalledTimes(1)
+    expect(upsert).toHaveBeenCalledWith(
+      [
+        { profile_id: 'u1', funcionalidad_id: 'premios', habilitado: true },
+        { profile_id: 'u2', funcionalidad_id: 'premios', habilitado: true },
+      ],
+      { onConflict: 'profile_id,funcionalidad_id' }
+    )
+    expect(resultado).toEqual({ actualizados: 2, error: null })
+  })
+
+  it('"deshabilitar" hace un solo upsert con habilitado=false', async () => {
+    const { supabase } = await import('./supabase')
+    const upsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(supabase.from).mockReturnValue({ upsert } as never)
+
+    const resultado = await aplicarFuncionalidadAUsuarios(['u1'], 'consultas', 'deshabilitar')
+
+    expect(upsert).toHaveBeenCalledWith(
+      [{ profile_id: 'u1', funcionalidad_id: 'consultas', habilitado: false }],
+      { onConflict: 'profile_id,funcionalidad_id' }
+    )
+    expect(resultado).toEqual({ actualizados: 1, error: null })
+  })
+
+  it('"quitar_excepcion" hace un solo delete con .in sobre los IDs', async () => {
+    const { supabase } = await import('./supabase')
+    const inFn = vi.fn().mockResolvedValue({ error: null })
+    const eqFn = vi.fn().mockReturnValue({ in: inFn })
+    const deleteFn = vi.fn().mockReturnValue({ eq: eqFn })
+    vi.mocked(supabase.from).mockReturnValue({ delete: deleteFn } as never)
+
+    const resultado = await aplicarFuncionalidadAUsuarios(
+      ['u1', 'u2', 'u3'],
+      'ejercicios',
+      'quitar_excepcion'
+    )
+
+    expect(supabase.from).toHaveBeenCalledWith('perfil_funcionalidades')
+    expect(deleteFn).toHaveBeenCalledTimes(1)
+    expect(eqFn).toHaveBeenCalledWith('funcionalidad_id', 'ejercicios')
+    expect(inFn).toHaveBeenCalledWith('profile_id', ['u1', 'u2', 'u3'])
+    expect(resultado).toEqual({ actualizados: 3, error: null })
+  })
+
+  it('propaga el error de supabase sin marcar usuarios como actualizados', async () => {
+    const { supabase } = await import('./supabase')
+    const upsert = vi.fn().mockResolvedValue({ error: { message: 'boom' } })
+    vi.mocked(supabase.from).mockReturnValue({ upsert } as never)
+
+    const resultado = await aplicarFuncionalidadAUsuarios(['u1'], 'liga', 'habilitar')
+    expect(resultado).toEqual({ actualizados: 0, error: 'boom' })
   })
 })
