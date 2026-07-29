@@ -1,10 +1,13 @@
 import { createContext } from 'react'
 
 export interface FuncionalidadesContextValue {
-  // Ids de funcionalidades explícitamente restringidas para el perfil
-  // actual. Cualquier id que NO esté en este set tiene acceso habilitado
-  // (default de la app, ver `lib/funcionalidades.ts`).
-  restringidas: Set<string>
+  // Overrides individuales del perfil actual (perfil_funcionalidades) y,
+  // si tiene un grupo de acceso asignado, el detalle de ese grupo
+  // (grupo_acceso_funcionalidades). Ver `lib/funcionalidades.ts` para la
+  // cascada completa de resolución (override individual > grupo > default
+  // habilitado).
+  overridesIndividuales: Map<string, boolean>
+  accesosGrupo: Map<string, boolean> | null
   cargando: boolean
   tieneAcceso: (funcionalidadId: string) => boolean
 }
