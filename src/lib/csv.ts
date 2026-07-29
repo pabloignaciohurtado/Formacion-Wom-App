@@ -31,3 +31,62 @@ export function descargarCSV(nombreArchivo: string, contenido: string): void {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// Parser de CSV a mano (sin dependencias, mismo criterio que `generarCSV`):
+// entiende comillas, comas y saltos de línea dentro de un campo entrecomillado
+// (RFC 4180), CRLF y LF indistintamente, y descarta un BOM inicial si viene
+// de Excel. Se usa para la carga masiva de usuarios (ver
+// `lib/cargaMasivaUsuarios.ts`) — el volumen esperado (decenas/centenas de
+// filas escritas a mano en una planilla) no justifica sumar una dependencia
+// como papaparse solo para esto.
+export function parsearCSV(texto: string): string[][] {
+  const limpio = texto.replace(/^﻿/, '')
+  const filas: string[][] = []
+  let fila: string[] = []
+  let campo = ''
+  let entreComillas = false
+
+  for (let i = 0; i < limpio.length; i++) {
+    const c = limpio[i]
+
+    if (entreComillas) {
+      if (c === '"') {
+        if (limpio[i + 1] === '"') {
+          campo += '"'
+          i++
+        } else {
+          entreComillas = false
+        }
+      } else {
+        campo += c
+      }
+      continue
+    }
+
+    if (c === '"') {
+      entreComillas = true
+    } else if (c === ',') {
+      fila.push(campo)
+      campo = ''
+    } else if (c === '\r') {
+      // se ignora: el \n que sigue (si hay) cierra la fila
+    } else if (c === '\n') {
+      fila.push(campo)
+      filas.push(fila)
+      fila = []
+      campo = ''
+    } else {
+      campo += c
+    }
+  }
+
+  // Última fila, si el archivo no termina en salto de línea.
+  if (campo !== '' || fila.length > 0) {
+    fila.push(campo)
+    filas.push(fila)
+  }
+
+  // Descarta filas completamente vacías (ej. una línea en blanco al final
+  // del archivo), típicas de exportar/editar la planilla a mano.
+  return filas.filter((f) => !(f.length === 1 && f[0] === ''))
+}
