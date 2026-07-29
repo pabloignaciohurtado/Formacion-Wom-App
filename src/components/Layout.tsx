@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { m, useReducedMotion } from 'motion/react'
 import { EASE_OUT } from '../lib/motion'
@@ -35,6 +35,20 @@ const enlaces = [
   { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion, exacto: false, funcionalidadId: 'consultas' },
 ] as const
 
+// Pista visual sutil de que hay ítems ocultos deslizando a cada lado de la
+// barra inferior móvil (ej. "Consultas" fuera del ancho visible): una sombra
+// interior en el borde correspondiente, el mismo patrón que usan las tablas
+// con scroll horizontal. Sin esto, un ítem que no cabe puede parecer que
+// simplemente no existe en vez de estar a un swipe de distancia.
+function sombraDeslizamiento(izq: boolean, der: boolean) {
+  const sombraIzq = 'inset_14px_0_10px_-10px_rgba(0,0,0,0.16)'
+  const sombraDer = 'inset_-14px_0_10px_-10px_rgba(0,0,0,0.16)'
+  if (izq && der) return `shadow-[${sombraIzq},${sombraDer}]`
+  if (izq) return `shadow-[${sombraIzq}]`
+  if (der) return `shadow-[${sombraDer}]`
+  return ''
+}
+
 function clasesNav(activo: boolean, movil = false) {
   const base = movil
     ? 'flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors'
@@ -49,6 +63,9 @@ export function Layout() {
   const { tieneAcceso } = useFuncionalidades()
   const location = useLocation()
   const reduce = useReducedMotion()
+  const navMovilRef = useRef<HTMLElement>(null)
+  const [puedeDeslizarIzq, setPuedeDeslizarIzq] = useState(false)
+  const [puedeDeslizarDer, setPuedeDeslizarDer] = useState(false)
 
   // Sincroniza intentos hechos sin conexión al montar y al volver la red
   useEffect(() => {
@@ -66,6 +83,37 @@ export function Layout() {
   const enlacesVisibles = enlaces.filter(
     (e) => e.funcionalidadId === null || tieneAcceso(e.funcionalidadId)
   )
+
+  // La barra inferior móvil tiene una cantidad de ítems variable (depende de
+  // las funcionalidades habilitadas al usuario). Cuando no caben todos en el
+  // ancho de pantalla, en vez de recortar/ocultar el sobrante en silencio, la
+  // barra se vuelve deslizable horizontalmente. Estos efectos: (1) calculan
+  // si hay contenido oculto a cada lado para mostrar la pista visual de
+  // degradado, y (2) llevan el ítem activo a la vista al cargar/cambiar de
+  // ruta, para que no haya que adivinar que se puede deslizar.
+  useEffect(() => {
+    const el = navMovilRef.current
+    if (!el) return
+    const actualizarPistas = () => {
+      setPuedeDeslizarIzq(el.scrollLeft > 4)
+      setPuedeDeslizarDer(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+    }
+    actualizarPistas()
+    el.addEventListener('scroll', actualizarPistas, { passive: true })
+    window.addEventListener('resize', actualizarPistas)
+    return () => {
+      el.removeEventListener('scroll', actualizarPistas)
+      window.removeEventListener('resize', actualizarPistas)
+    }
+  }, [enlacesVisibles.length])
+
+  useEffect(() => {
+    const el = navMovilRef.current
+    if (!el) return
+    const activo = el.querySelector('[aria-current="page"]')
+    activo?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  }, [location.pathname, enlacesVisibles.length])
+
   const iniciales = (perfil?.nombre ?? user?.email ?? '?')
     .split(/[\s.@]+/)
     .filter(Boolean)
@@ -176,39 +224,46 @@ export function Layout() {
         </m.div>
       </main>
 
-      {/* Bottom nav móvil */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-black/5 bg-superficie/95 px-2 py-2 backdrop-blur lg:hidden">
-        {enlacesVisibles.map(({ a, texto, Icono, exacto }) => (
-          <NavLink key={a} to={a} end={exacto}>
-            {({ isActive }) => (
-              <span className={clasesNav(isActive, true)}>
-                <Icono className="size-5" />
-                {texto}
-              </span>
-            )}
-          </NavLink>
-        ))}
-        {esSupervisor && (
-          <NavLink to="/equipo">
-            {({ isActive }) => (
-              <span className={clasesNav(isActive, true)}>
-                <Users className="size-5" />
-                Equipo
-              </span>
-            )}
-          </NavLink>
-        )}
-        {esAdmin && (
-          <NavLink to="/admin">
-            {({ isActive }) => (
-              <span className={clasesNav(isActive, true)}>
-                <ShieldCheck className="size-5" />
-                Admin
-              </span>
-            )}
-          </NavLink>
-        )}
-      </nav>
+      {/* Bottom nav móvil. La barra en sí es la que desliza; las sombras
+          interiores de los bordes son la pista de que hay ítems ocultos
+          (ver `sombraDeslizamiento` más abajo). */}
+      <div className="fixed inset-x-0 bottom-0 z-30 lg:hidden">
+        <nav
+          ref={navMovilRef}
+          className={`scrollbar-none flex items-center justify-around gap-1 overflow-x-auto border-t border-black/5 bg-superficie/95 px-2 py-2 backdrop-blur transition-shadow [-webkit-overflow-scrolling:touch] ${sombraDeslizamiento(puedeDeslizarIzq, puedeDeslizarDer)}`}
+        >
+          {enlacesVisibles.map(({ a, texto, Icono, exacto }) => (
+            <NavLink key={a} to={a} end={exacto} className="min-w-16 flex-shrink-0">
+              {({ isActive }) => (
+                <span className={clasesNav(isActive, true)}>
+                  <Icono className="size-5" />
+                  {texto}
+                </span>
+              )}
+            </NavLink>
+          ))}
+          {esSupervisor && (
+            <NavLink to="/equipo" className="min-w-16 flex-shrink-0">
+              {({ isActive }) => (
+                <span className={clasesNav(isActive, true)}>
+                  <Users className="size-5" />
+                  Equipo
+                </span>
+              )}
+            </NavLink>
+          )}
+          {esAdmin && (
+            <NavLink to="/admin" className="min-w-16 flex-shrink-0">
+              {({ isActive }) => (
+                <span className={clasesNav(isActive, true)}>
+                  <ShieldCheck className="size-5" />
+                  Admin
+                </span>
+              )}
+            </NavLink>
+          )}
+        </nav>
+      </div>
     </div>
   )
 }
