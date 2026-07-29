@@ -3,9 +3,11 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { domAnimation, LazyMotion } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
 import { CatalogoProvider } from './catalogo/CatalogoProvider'
+import { FuncionalidadesProvider } from './funcionalidades/FuncionalidadesProvider'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AdminRoute } from './auth/AdminRoute'
 import { SupervisorRoute } from './auth/SupervisorRoute'
+import { FuncionalidadRoute } from './auth/FuncionalidadRoute'
 import { Layout } from './components/Layout'
 import { EstadoCarga } from './components/ui'
 import Login from './pages/Login'
@@ -55,17 +57,50 @@ export default function App() {
               <Route path="/restablecer" element={<Restablecer />} />
               <Route element={<ProtectedRoute />}>
                 {/* El catálogo (estático + materiales publicados) se carga una
-                    sola vez, ya con sesión: la RLS lo exige. */}
-                <Route element={<CatalogoProvider><Layout /></CatalogoProvider>}>
+                    sola vez, ya con sesión: la RLS lo exige. Igual pasa con
+                    FuncionalidadesProvider: resuelve una sola vez qué
+                    secciones tiene restringidas el usuario logueado. */}
+                <Route
+                  element={
+                    <CatalogoProvider>
+                      <FuncionalidadesProvider>
+                        <Layout />
+                      </FuncionalidadesProvider>
+                    </CatalogoProvider>
+                  }
+                >
+                  {/* Panel (home) es universal: no es una "funcionalidad"
+                      togglable, es la pantalla mínima para operar. */}
                   <Route path="/" element={<Panel />} />
-                  <Route path="/liga" element={<Liga />} />
-                  <Route path="/premios" element={<AlbumPremios />} />
-                  <Route path="/ejercicios" element={<Ejercicios />} />
-                  <Route path="/ejercicios/:dominioId" element={<Practica />} />
-                  {/* Repaso directo de todos los pendientes, sin selector. */}
-                  <Route path="/repasar" element={<Practica />} />
-                  <Route path="/actividades" element={<Actividades />} />
-                  <Route path="/consultas" element={<Consultas />} />
+                  <Route element={<FuncionalidadRoute funcionalidadId="liga" />}>
+                    <Route path="/liga" element={<Liga />} />
+                  </Route>
+                  <Route element={<FuncionalidadRoute funcionalidadId="premios" />}>
+                    <Route path="/premios" element={<AlbumPremios />} />
+                  </Route>
+                  <Route
+                    element={<FuncionalidadRoute funcionalidadId="ejercicios" />}
+                  >
+                    <Route path="/ejercicios" element={<Ejercicios />} />
+                    <Route path="/ejercicios/:dominioId" element={<Practica />} />
+                    {/* Repaso directo de todos los pendientes, sin selector:
+                        es parte de la misma funcionalidad de Ejercicios. */}
+                    <Route path="/repasar" element={<Practica />} />
+                  </Route>
+                  <Route
+                    element={<FuncionalidadRoute funcionalidadId="actividades" />}
+                  >
+                    <Route path="/actividades" element={<Actividades />} />
+                  </Route>
+                  <Route
+                    element={<FuncionalidadRoute funcionalidadId="consultas" />}
+                  >
+                    <Route path="/consultas" element={<Consultas />} />
+                  </Route>
+                  {/* Equipo y Admin no pasan por el control de funcionalidades:
+                      ya están gobernadas por rol (SupervisorRoute/AdminRoute),
+                      que es un control estructural, no una asignación manual
+                      por usuario. */}
                   <Route element={<SupervisorRoute />}>
                     <Route path="/equipo" element={<Equipo />} />
                   </Route>

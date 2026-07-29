@@ -7,8 +7,11 @@ import { AdminCiclosCapacitacion } from '../components/AdminCiclosCapacitacion'
 import { AdminContenidos } from '../components/AdminContenidos'
 import { AdminCrearUsuario } from '../components/AdminCrearUsuario'
 import { AdminEquipo } from '../components/AdminEquipo'
+import { EditarAccesosUsuario } from '../components/EditarAccesosUsuario'
 import { AdminMateriales } from '../components/AdminMateriales'
 import { AdminOtorgarInsignias } from '../components/AdminOtorgarInsignias'
+import { GruposAcceso } from '../components/GruposAcceso'
+import { asignarGrupoAUsuarios, cargarGruposAcceso, type GrupoAcceso } from '../lib/funcionalidades'
 import {
   etiquetaRol,
   puedeAsignar,
@@ -27,14 +30,21 @@ export default function Admin() {
   const [consultas, setConsultas] = useState<Consulta[] | null>(null)
   const [respuestas, setRespuestas] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
+  const [grupos, setGrupos] = useState<GrupoAcceso[]>([])
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
+  const [grupoAsignacion, setGrupoAsignacion] = useState('')
+  const [asignando, setAsignando] = useState(false)
+  const [exitoAsignacion, setExitoAsignacion] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    const [perfiles, pendientes] = await Promise.all([
+    const [perfiles, pendientes, listaGrupos] = await Promise.all([
       supabase.from('profiles').select('*').order('creado_en'),
       supabase.from('consultas').select('*').order('fecha', { ascending: false }),
+      cargarGruposAcceso(),
     ])
     setUsuarios(perfiles.data ?? [])
     setConsultas(pendientes.data ?? [])
+    setGrupos(listaGrupos)
   }, [])
 
   useEffect(() => {
@@ -93,6 +103,48 @@ export default function Admin() {
     void cargar()
   }
 
+  const alternarSeleccionado = (id: string) => {
+    setSeleccionados((prev) => {
+      const siguiente = new Set(prev)
+      if (siguiente.has(id)) siguiente.delete(id)
+      else siguiente.add(id)
+      return siguiente
+    })
+  }
+
+  const alternarTodos = (ejecutivos: Perfil[]) => {
+    setSeleccionados((prev) =>
+      ejecutivos.every((e) => prev.has(e.id)) ? new Set() : new Set(ejecutivos.map((e) => e.id))
+    )
+  }
+
+  // Asignación masiva: aplica el mismo grupo/plantilla de acceso a todos
+  // los ejecutivos marcados de una sola vez (en vez de repetir el mismo
+  // patrón usuario por usuario en EditarAccesosUsuario).
+  const asignarGrupoMasivo = async () => {
+    if (seleccionados.size === 0) return
+    setAsignando(true)
+    setError(null)
+    setExitoAsignacion(null)
+    const { error: asignarError } = await asignarGrupoAUsuarios(
+      [...seleccionados],
+      grupoAsignacion || null
+    )
+    setAsignando(false)
+    if (asignarError) {
+      setError(asignarError)
+      return
+    }
+    const nombreGrupo = grupos.find((g) => g.id === grupoAsignacion)?.nombre
+    setExitoAsignacion(
+      nombreGrupo
+        ? `Grupo "${nombreGrupo}" asignado a ${seleccionados.size} usuario(s).`
+        : `Grupo de acceso quitado a ${seleccionados.size} usuario(s).`
+    )
+    setSeleccionados(new Set())
+    void cargar()
+  }
+
   const responder = async (consulta: Consulta) => {
     const respuesta = (respuestas[consulta.id] ?? '').trim()
     if (!respuesta) return
@@ -127,10 +179,59 @@ export default function Admin() {
       {!usuarios ? (
         <EstadoCarga texto="Cargando usuarios…" />
       ) : (
-        <Tarjeta className="mt-3 overflow-x-auto p-0">
-          <table className="w-full min-w-[560px] text-sm">
+        <>
+          {seleccionados.size > 0 && (
+            <Tarjeta className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <p className="text-sm font-semibold text-tinta sm:flex-1">
+                {seleccionados.size} usuario(s) seleccionado(s)
+              </p>
+              <div className="flex-1 space-y-1.5">
+                <label
+                  htmlFor="asignacion-masiva-grupo"
+                  className="block text-sm font-semibold text-tinta"
+                >
+                  Asignar grupo de acceso
+                </label>
+                <select
+                  id="asignacion-masiva-grupo"
+                  value={grupoAsignacion}
+                  onChange={(e) => setGrupoAsignacion(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                >
+                  <option value="">Sin grupo (acceso por defecto)</option>
+                  {grupos.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Boton
+                type="button"
+                disabled={asignando}
+                onClick={() => void asignarGrupoMasivo()}
+                className="sm:self-end"
+              >
+                Asignar a {seleccionados.size} usuario(s)
+              </Boton>
+            </Tarjeta>
+          )}
+          {exitoAsignacion && (
+            <p className="mt-2 text-sm font-semibold text-exito-texto">{exitoAsignacion}</p>
+          )}
+          <Tarjeta className="mt-3 overflow-x-auto p-0">
+          <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="border-b border-niebla text-left text-xs uppercase tracking-wide text-tinta-suave">
+                <th className="px-5 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleccionar todos los usuarios"
+                    checked={usuarios.length > 0 && usuarios.every((u) => seleccionados.has(u.id))}
+                    onChange={() => alternarTodos(usuarios)}
+                    className="size-4 accent-wom-600"
+                  />
+                </th>
                 <th className="px-5 py-3">Nombre</th>
                 <th className="px-5 py-3">Email</th>
                 <th className="px-5 py-3">Rol</th>
@@ -142,6 +243,15 @@ export default function Admin() {
             <tbody>
               {usuarios.map((r) => (
                 <tr key={r.id} className="border-b border-niebla last:border-0">
+                  <td className="px-5 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleccionar a ${r.nombre}`}
+                      checked={seleccionados.has(r.id)}
+                      onChange={() => alternarSeleccionado(r.id)}
+                      className="size-4 accent-wom-600"
+                    />
+                  </td>
                   <td className="px-5 py-3 font-semibold">{r.nombre}</td>
                   <td className="px-5 py-3 text-tinta-suave">{r.email}</td>
                   <td className="px-5 py-3">
@@ -225,10 +335,15 @@ export default function Admin() {
               ))}
             </tbody>
           </table>
-        </Tarjeta>
+          </Tarjeta>
+        </>
       )}
 
       <AdminEquipo />
+
+      <GruposAcceso />
+
+      <EditarAccesosUsuario usuarios={usuarios ?? []} onCambio={() => void cargar()} />
 
       <AdminOtorgarInsignias />
 
