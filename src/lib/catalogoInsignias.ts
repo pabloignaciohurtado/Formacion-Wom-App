@@ -12,6 +12,8 @@ export type InsigniaCatalogo = Tables<'insignias'>
 
 export interface InsigniaConEstado extends InsigniaCatalogo {
   obtenida: boolean
+  // Fecha, admin y nota de la ocurrencia MÁS RECIENTE (compatibilidad con
+  // el resto del álbum, que muestra "la" trazabilidad de una insignia).
   obtenidaEn: string | null
   // Trazabilidad de otorgamiento manual (categorías de desempeño, no
   // 'formacion'): nombre del admin que la otorgó y su nota opcional. Ambos
@@ -19,6 +21,13 @@ export interface InsigniaConEstado extends InsigniaCatalogo {
   // este flujo.
   otorgadoPorNombre: string | null
   nota: string | null
+  // Soporte "xN": cuántas veces se otorgó esta insignia a este usuario (0 si
+  // no la tiene) y el detalle de cada ocurrencia individual, más reciente
+  // primero. `veces` > 1 es lo que dispara la insignia "xN" en la tarjeta;
+  // `ocurrencias` alimenta el detalle expandido (una fila por otorgamiento,
+  // con su propia fecha/admin/nota, en vez de solo la última).
+  veces: number
+  ocurrencias: DetalleObtenida[]
 }
 
 // Detalle de una insignia obtenida: fecha, y si fue un otorgamiento manual
@@ -68,48 +77,55 @@ export async function cargarCatalogoInsignias(): Promise<InsigniaCatalogo[]> {
   return data ?? []
 }
 
-// Devuelve un mapa insignia_id -> detalle de obtención (fecha y, si fue un
-// otorgamiento manual, quién lo hizo), para el usuario dado. El nombre del
-// admin se resuelve con un join contra `profiles` vía la FK `otorgado_por`
-// (alias explícito porque `insignias_usuario` tiene dos FKs hacia
-// `profiles`: `user_id` y `otorgado_por`).
+// Devuelve un mapa insignia_id -> TODAS sus ocurrencias (fecha y, si fue un
+// otorgamiento manual, quién lo hizo), más reciente primero, para el usuario
+// dado. Puede haber más de una fila por insignia_id (soporte "xN": desde que
+// `insignias_usuario` dejó de tener PK compuesta, un usuario puede tener la
+// misma insignia otorgada varias veces). El nombre del admin se resuelve con
+// un join contra `profiles` vía la FK `otorgado_por` (alias explícito porque
+// `insignias_usuario` tiene dos FKs hacia `profiles`: `user_id` y
+// `otorgado_por`).
 export async function cargarInsigniasObtenidas(
   userId: string
-): Promise<Map<string, DetalleObtenida>> {
+): Promise<Map<string, DetalleObtenida[]>> {
   const { data, error } = await supabase
     .from('insignias_usuario')
     .select(
       'insignia_id, obtenida_en, nota, otorgado_por, admin:profiles!insignias_usuario_otorgado_por_fkey(nombre)'
     )
     .eq('user_id', userId)
+    .order('obtenida_en', { ascending: false })
   if (error || !data) return new Map()
-  return new Map(
-    data.map((d) => {
-      const admin = d.admin as unknown as { nombre: string } | null
-      return [
-        d.insignia_id,
-        {
-          obtenidaEn: d.obtenida_en,
-          otorgadoPorNombre: admin?.nombre ?? null,
-          nota: d.nota,
-        },
-      ]
-    })
-  )
+  const mapa = new Map<string, DetalleObtenida[]>()
+  for (const d of data) {
+    const admin = d.admin as unknown as { nombre: string } | null
+    const detalle: DetalleObtenida = {
+      obtenidaEn: d.obtenida_en,
+      otorgadoPorNombre: admin?.nombre ?? null,
+      nota: d.nota,
+    }
+    const previas = mapa.get(d.insignia_id) ?? []
+    previas.push(detalle)
+    mapa.set(d.insignia_id, previas)
+  }
+  return mapa
 }
 
 export function combinarInsignias(
   catalogo: InsigniaCatalogo[],
-  obtenidas: Map<string, DetalleObtenida>
+  obtenidas: Map<string, DetalleObtenida[]>
 ): InsigniaConEstado[] {
   return catalogo.map((i) => {
-    const detalle = obtenidas.get(i.id)
+    const ocurrencias = obtenidas.get(i.id) ?? []
+    const ultima = ocurrencias[0]
     return {
       ...i,
-      obtenida: obtenidas.has(i.id),
-      obtenidaEn: detalle?.obtenidaEn ?? null,
-      otorgadoPorNombre: detalle?.otorgadoPorNombre ?? null,
-      nota: detalle?.nota ?? null,
+      obtenida: ocurrencias.length > 0,
+      obtenidaEn: ultima?.obtenidaEn ?? null,
+      otorgadoPorNombre: ultima?.otorgadoPorNombre ?? null,
+      nota: ultima?.nota ?? null,
+      veces: ocurrencias.length,
+      ocurrencias,
     }
   })
 }
