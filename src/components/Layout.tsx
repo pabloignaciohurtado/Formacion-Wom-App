@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../auth/useAuth'
 import { sincronizarOffline } from '../lib/colaOffline'
 import { etiquetaRol } from '../lib/roles'
+import { useFuncionalidades } from '../funcionalidades/useFuncionalidades'
 import { MarcaWom } from './MarcaWom'
 import { EstadoCarga } from './ui'
 import { ErrorBoundary } from './ErrorBoundary'
@@ -23,14 +24,16 @@ import { EstadoConexion } from './EstadoConexion'
 import { BuscadorGlobal } from './BuscadorGlobal'
 import { SelectorTema } from './SelectorTema'
 
+// `funcionalidadId: null` marca los enlaces universales (Panel), que nunca
+// se ocultan: no pasan por el control de acceso por usuario.
 const enlaces = [
-  { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true },
-  { a: '/ejercicios', texto: 'Ejercicios', Icono: Dumbbell },
-  { a: '/liga', texto: 'Liga', Icono: Trophy },
-  { a: '/premios', texto: 'Premios', Icono: Award },
-  { a: '/actividades', texto: 'Actividades', Icono: ClipboardCheck },
-  { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion },
-]
+  { a: '/', texto: 'Panel', Icono: LayoutDashboard, exacto: true, funcionalidadId: null },
+  { a: '/ejercicios', texto: 'Ejercicios', Icono: Dumbbell, exacto: false, funcionalidadId: 'ejercicios' },
+  { a: '/liga', texto: 'Liga', Icono: Trophy, exacto: false, funcionalidadId: 'liga' },
+  { a: '/premios', texto: 'Premios', Icono: Award, exacto: false, funcionalidadId: 'premios' },
+  { a: '/actividades', texto: 'Actividades', Icono: ClipboardCheck, exacto: false, funcionalidadId: 'actividades' },
+  { a: '/consultas', texto: 'Consultas', Icono: MessageCircleQuestion, exacto: false, funcionalidadId: 'consultas' },
+] as const
 
 function clasesNav(activo: boolean, movil = false) {
   const base = movil
@@ -43,6 +46,7 @@ function clasesNav(activo: boolean, movil = false) {
 
 export function Layout() {
   const { perfil, user, signOut } = useAuth()
+  const { tieneAcceso } = useFuncionalidades()
   const location = useLocation()
   const reduce = useReducedMotion()
 
@@ -56,6 +60,12 @@ export function Layout() {
   const esAdmin = perfil?.role === 'admin'
   // El admin ya tiene todo en Administración; Equipo es la puerta del supervisor.
   const esSupervisor = perfil?.role === 'supervisor'
+  // Un enlace se oculta solo si tiene funcionalidadId y el admin lo restringió
+  // a mano para este usuario; los universales (funcionalidadId: null) siempre
+  // se muestran.
+  const enlacesVisibles = enlaces.filter(
+    (e) => e.funcionalidadId === null || tieneAcceso(e.funcionalidadId)
+  )
   const iniciales = (perfil?.nombre ?? user?.email ?? '?')
     .split(/[\s.@]+/)
     .filter(Boolean)
@@ -71,7 +81,7 @@ export function Layout() {
           <MarcaWom clara />
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {enlaces.map(({ a, texto, Icono, exacto }) => (
+          {enlacesVisibles.map(({ a, texto, Icono, exacto }) => (
             <NavLink key={a} to={a} end={exacto}>
               {({ isActive }) => (
                 <span className={clasesNav(isActive)}>
@@ -168,7 +178,7 @@ export function Layout() {
 
       {/* Bottom nav móvil */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-black/5 bg-superficie/95 px-2 py-2 backdrop-blur lg:hidden">
-        {enlaces.map(({ a, texto, Icono, exacto }) => (
+        {enlacesVisibles.map(({ a, texto, Icono, exacto }) => (
           <NavLink key={a} to={a} end={exacto}>
             {({ isActive }) => (
               <span className={clasesNav(isActive, true)}>

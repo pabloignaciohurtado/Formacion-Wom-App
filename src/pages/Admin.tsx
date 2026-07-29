@@ -7,6 +7,7 @@ import { AdminCiclosCapacitacion } from '../components/AdminCiclosCapacitacion'
 import { AdminContenidos } from '../components/AdminContenidos'
 import { AdminCrearUsuario } from '../components/AdminCrearUsuario'
 import { AdminEquipo } from '../components/AdminEquipo'
+import { EditarAccesosUsuario } from '../components/EditarAccesosUsuario'
 import { AdminMateriales } from '../components/AdminMateriales'
 import { AdminOtorgarInsignias } from '../components/AdminOtorgarInsignias'
 import {
@@ -229,6 +230,8 @@ export default function Admin() {
       )}
 
       <AdminEquipo />
+
+      <EditarAccesosUsuario usuarios={usuarios ?? []} />
 
       <AdminOtorgarInsignias />
 
