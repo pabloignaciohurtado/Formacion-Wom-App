@@ -5,7 +5,7 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import { BookOpen, Eye, EyeOff, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { BookOpen, Eye, EyeOff, Link2, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORIAS, DOMINIOS } from '../data/contenido'
 import {
@@ -19,8 +19,10 @@ import {
   MAXIMO_CARACTERES_MATERIAL,
   MAXIMO_PREGUNTAS_PEDIDAS,
   MINIMO_PREGUNTAS_PEDIDAS,
+  generarBorradorDesdeLink,
   materialDesdePropuesta,
   pedirBorradorIa,
+  type FuenteLink,
 } from '../lib/borradorIa'
 import {
   CONTENIDO_VACIO,
@@ -90,12 +92,15 @@ export function AdminContenidos() {
   // porque es material de entrada: no se guarda con el material, solo sirve
   // para producir la propuesta que después se edita a mano.
   const [panelIa, setPanelIa] = useState(false)
+  const [modoIa, setModoIa] = useState<'texto' | 'link'>('texto')
   const [fuenteIa, setFuenteIa] = useState('')
+  const [urlIa, setUrlIa] = useState('')
   const [focoIa, setFocoIa] = useState('')
   const [cantidadIa, setCantidadIa] = useState(5)
   const [generando, setGenerando] = useState(false)
   const [errorIa, setErrorIa] = useState<string | null>(null)
   const [avisoIa, setAvisoIa] = useState<string | null>(null)
+  const [fuenteDetectada, setFuenteDetectada] = useState<FuenteLink | null>(null)
 
   const cargar = useCallback(async () => {
     // `false` = también los borradores propios, que son justamente los que el
@@ -120,10 +125,13 @@ export function AdminContenidos() {
 
   const limpiarIa = () => {
     setPanelIa(false)
+    setModoIa('texto')
     setFuenteIa('')
+    setUrlIa('')
     setFocoIa('')
     setErrorIa(null)
     setAvisoIa(null)
+    setFuenteDetectada(null)
   }
 
   const nuevo = () => {
@@ -222,6 +230,38 @@ export function AdminContenidos() {
     setPanelIa(false)
     setAvisoIa(
       'Propuesta generada. Revísala completa antes de publicar: la IA puede equivocarse en cifras, plazos y nombres de planes.'
+    )
+  }
+
+  // Misma lógica que `generarConIa`, pero la fuente es un link que primero se
+  // scrapea en el servidor. La propuesta llega con la misma forma y se funde
+  // exactamente igual sobre el formulario.
+  const generarConIaDesdeLink = async () => {
+    if (!borrador || generando) return
+    setGenerando(true)
+    setErrorIa(null)
+    setAvisoIa(null)
+    setFuenteDetectada(null)
+    const { propuesta, fuente, error: problema } = await generarBorradorDesdeLink({
+      url: urlIa,
+      cantidadPreguntas: cantidadIa,
+      foco: focoIa,
+    })
+    setGenerando(false)
+    if (problema || !propuesta) {
+      setErrorIa(problema ?? 'No se pudo generar el borrador.')
+      return
+    }
+    setBorrador(
+      materialDesdePropuesta(propuesta, borrador, {
+        ocupados,
+        editandoExistente,
+      })
+    )
+    setFuenteDetectada(fuente)
+    setPanelIa(false)
+    setAvisoIa(
+      'Propuesta generada a partir del link. Revísala completa antes de publicar: la IA puede equivocarse en cifras, plazos y nombres de planes.'
     )
   }
 
@@ -373,35 +413,99 @@ export function AdminContenidos() {
               </button>
             </div>
             <p className="mt-1 text-xs text-tinta-suave">
-              Pega un instructivo, un correo de campaña o un procedimiento y la
-              IA propone la lección y las preguntas. Nada se publica solo:
-              siempre revisas y guardas tú.
+              Pega un instructivo o un procedimiento, o pega el link de una
+              página, y la IA propone la lección y las preguntas. Nada se
+              publica solo: siempre revisas y guardas tú.
             </p>
 
             {panelIa && (
               <div className="mt-3 space-y-3">
-                <div>
-                  <label
-                    htmlFor="ia-fuente"
-                    className="text-sm font-semibold text-tinta"
+                <div
+                  className="inline-flex rounded-xl border border-gray-200 p-1 text-sm"
+                  role="tablist"
+                  aria-label="Origen del borrador"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoIa === 'texto'}
+                    onClick={() => {
+                      setModoIa('texto')
+                      setErrorIa(null)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+                      modoIa === 'texto'
+                        ? 'bg-wom-600 text-white'
+                        : 'text-tinta-suave hover:text-tinta'
+                    }`}
                   >
-                    Material de referencia
-                  </label>
-                  <textarea
-                    id="ia-fuente"
-                    rows={8}
-                    value={fuenteIa}
-                    maxLength={MAXIMO_CARACTERES_MATERIAL}
-                    onChange={(e) => setFuenteIa(e.target.value)}
-                    placeholder="Pega aquí el procedimiento, la minuta de la campaña o el instructivo…"
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
-                  />
-                  <p className="mt-1 text-xs text-tinta-suave">
-                    {fuenteIa.length.toLocaleString('es-CL')} de{' '}
-                    {MAXIMO_CARACTERES_MATERIAL.toLocaleString('es-CL')}{' '}
-                    caracteres
-                  </p>
+                    Desde texto
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoIa === 'link'}
+                    onClick={() => {
+                      setModoIa('link')
+                      setErrorIa(null)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+                      modoIa === 'link'
+                        ? 'bg-wom-600 text-white'
+                        : 'text-tinta-suave hover:text-tinta'
+                    }`}
+                  >
+                    Desde un link
+                  </button>
                 </div>
+
+                {modoIa === 'texto' ? (
+                  <div>
+                    <label
+                      htmlFor="ia-fuente"
+                      className="text-sm font-semibold text-tinta"
+                    >
+                      Material de referencia
+                    </label>
+                    <textarea
+                      id="ia-fuente"
+                      rows={8}
+                      value={fuenteIa}
+                      maxLength={MAXIMO_CARACTERES_MATERIAL}
+                      onChange={(e) => setFuenteIa(e.target.value)}
+                      placeholder="Pega aquí el procedimiento, la minuta de la campaña o el instructivo…"
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      {fuenteIa.length.toLocaleString('es-CL')} de{' '}
+                      {MAXIMO_CARACTERES_MATERIAL.toLocaleString('es-CL')}{' '}
+                      caracteres
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label
+                      htmlFor="ia-url"
+                      className="text-sm font-semibold text-tinta"
+                    >
+                      Link de la página
+                    </label>
+                    <input
+                      id="ia-url"
+                      type="url"
+                      inputMode="url"
+                      value={urlIa}
+                      onChange={(e) => setUrlIa(e.target.value)}
+                      placeholder="https://www.wom.cl/ayuda/portabilidad"
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      Se extrae el texto de la página (sin menús ni
+                      publicidad) y se usa como material de referencia. Debe
+                      ser un link público, http:// o https://.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                   <Campo
@@ -432,24 +536,50 @@ export function AdminContenidos() {
 
                 {errorIa && <MensajeError>{errorIa}</MensajeError>}
 
-                <Boton
-                  type="button"
-                  variante="secundario"
-                  disabled={generando || fuenteIa.trim().length < 40}
-                  onClick={() => void generarConIa()}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Sparkles className="size-4" />
-                    {generando ? 'Generando…' : 'Generar propuesta'}
-                  </span>
-                </Boton>
+                {modoIa === 'texto' ? (
+                  <Boton
+                    type="button"
+                    variante="secundario"
+                    disabled={generando || fuenteIa.trim().length < 40}
+                    onClick={() => void generarConIa()}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Sparkles className="size-4" />
+                      {generando ? 'Generando…' : 'Generar propuesta'}
+                    </span>
+                  </Boton>
+                ) : (
+                  <Boton
+                    type="button"
+                    variante="secundario"
+                    disabled={generando || urlIa.trim().length === 0}
+                    onClick={() => void generarConIaDesdeLink()}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Link2 className="size-4" />
+                      {generando ? 'Extrayendo…' : 'Generar desde el link'}
+                    </span>
+                  </Boton>
+                )}
                 {generando && (
                   <p className="text-xs text-tinta-suave" role="status">
-                    Redactando la lección y las preguntas. Puede tardar hasta un
-                    minuto.
+                    {modoIa === 'link'
+                      ? 'Extrayendo el contenido de la página y generando la lección y las preguntas. Puede tardar más que con texto pegado.'
+                      : 'Redactando la lección y las preguntas. Puede tardar hasta un minuto.'}
                   </p>
                 )}
               </div>
+            )}
+
+            {fuenteDetectada && (
+              <p className="mt-3 text-xs text-tinta-suave">
+                Extraído de{' '}
+                <span className="font-semibold">{fuenteDetectada.url}</span>
+                {fuenteDetectada.tituloDetectado
+                  ? ` — "${fuenteDetectada.tituloDetectado}"`
+                  : ''}
+                .
+              </p>
             )}
 
             {avisoIa && (
