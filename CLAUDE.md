@@ -96,6 +96,31 @@ por las malas.
   administrador nunca quede en un estado imposible de guardar — ver
   DOCUMENTACION.md §6.1.2.
 
+  **Hay tres vías de generación con IA, y las tres emiten el mismo contrato
+  `PropuestaMaterial`**, así que `materialDesdePropuesta()` las normaliza sin
+  adaptarse a ninguna: `generar-borrador-material` (texto pegado, §6.1.2),
+  `generar-ejercicios-desde-link` (PR #85, la app descarga la página y extrae
+  el texto, §6.1.3) y `generar-leccion-desde-llamadas` (PR #86, 2026-08-03,
+  §6.1.4). La tercera es la que conecta calidad con formación: se pega un lote
+  de transcripciones mal evaluadas, `src/lib/transcripciones.ts` las separa en
+  llamadas individuales (topes: 40 llamadas / 60 000 caracteres / mínimo 200),
+  y la función devuelve un **diagnóstico** de los patrones que se repiten
+  —gravedad, en cuántas llamadas, ejemplo, impacto operativo— más el dominio a
+  reforzar y la lección con sus preguntas. Tres defensas que no se deben
+  quitar: el conteo de llamadas se acota al total realmente analizado (es el
+  número con el que se prioriza), un `dominioSugerido.id` inventado se degrada
+  a "dominio nuevo" en vez de apuntar a la nada, y el recorte por longitud
+  descarta llamadas completas en vez de truncar una a la mitad. El prompt
+  prohíbe reproducir datos personales del cliente o el nombre del ejecutivo, y
+  la interfaz avisa que **el diagnóstico es un apoyo, no una evaluación de
+  desempeño**.
+
+  Ojo con el panel admin: desde el PR #81 `/admin` está **organizado en
+  pestañas** (`?tab=usuarios|desempeno|formacion|actividades|consultas`, cada
+  una un chunk diferido). El creador de materiales vive en
+  `?tab=formacion` — en Playwright hay que navegar directo a
+  `/admin?tab=formacion`, no buscar un botón "Contenidos".
+
 ## Cómo se trabaja en este repo
 
 - **Flujo estricto:** rama de sesión → PR en borrador → CI verde → marcar
