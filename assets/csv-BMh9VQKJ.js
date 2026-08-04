@@ -1,0 +1,3 @@
+function e(e){let t=e==null?``:String(e);return/[",\n\r]/.test(t)?`"${t.replace(/"/g,`""`)}"`:t}function t(t,n){return[t,...n].map(t=>t.map(e).join(`,`)).join(`\r
+`)}function n(e,t){let n=new Blob([`﻿`+t],{type:`text/csv;charset=utf-8;`}),r=URL.createObjectURL(n),i=document.createElement(`a`);i.href=r,i.download=e,i.click(),URL.revokeObjectURL(r)}function r(e){let t=e.replace(/^﻿/,``),n=[],r=[],i=``,a=!1;for(let e=0;e<t.length;e++){let o=t[e];if(a){o===`"`?t[e+1]===`"`?(i+=`"`,e++):a=!1:i+=o;continue}o===`"`?a=!0:o===`,`?(r.push(i),i=``):o===`\r`||(o===`
+`?(r.push(i),n.push(r),r=[],i=``):i+=o)}return(i!==``||r.length>0)&&(r.push(i),n.push(r)),n.filter(e=>!(e.length===1&&e[0]===``))}export{t as n,r,n as t};
