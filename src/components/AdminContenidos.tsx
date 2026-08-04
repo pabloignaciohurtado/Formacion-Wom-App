@@ -5,7 +5,16 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import { BookOpen, Eye, EyeOff, Plus, Sparkles, Trash2 } from 'lucide-react'
+import {
+  BookOpen,
+  Eye,
+  EyeOff,
+  Headphones,
+  Link2,
+  Plus,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 import { useAuth } from '../auth/useAuth'
 import { CATEGORIAS, DOMINIOS } from '../data/contenido'
 import {
@@ -19,9 +28,18 @@ import {
   MAXIMO_CARACTERES_MATERIAL,
   MAXIMO_PREGUNTAS_PEDIDAS,
   MINIMO_PREGUNTAS_PEDIDAS,
+  generarBorradorDesdeLink,
   materialDesdePropuesta,
   pedirBorradorIa,
+  type FuenteLink,
 } from '../lib/borradorIa'
+import {
+  MAXIMO_CARACTERES_LLAMADAS,
+  generarLeccionDesdeLlamadas,
+  patronesPriorizados,
+  resumenLote,
+  type Diagnostico,
+} from '../lib/transcripciones'
 import {
   CONTENIDO_VACIO,
   archivarMaterial,
@@ -90,12 +108,17 @@ export function AdminContenidos() {
   // porque es material de entrada: no se guarda con el material, solo sirve
   // para producir la propuesta que después se edita a mano.
   const [panelIa, setPanelIa] = useState(false)
+  const [modoIa, setModoIa] = useState<'texto' | 'link' | 'llamadas'>('texto')
   const [fuenteIa, setFuenteIa] = useState('')
+  const [urlIa, setUrlIa] = useState('')
+  const [llamadasIa, setLlamadasIa] = useState('')
+  const [diagnostico, setDiagnostico] = useState<Diagnostico | null>(null)
   const [focoIa, setFocoIa] = useState('')
   const [cantidadIa, setCantidadIa] = useState(5)
   const [generando, setGenerando] = useState(false)
   const [errorIa, setErrorIa] = useState<string | null>(null)
   const [avisoIa, setAvisoIa] = useState<string | null>(null)
+  const [fuenteDetectada, setFuenteDetectada] = useState<FuenteLink | null>(null)
 
   const cargar = useCallback(async () => {
     // `false` = también los borradores propios, que son justamente los que el
@@ -115,15 +138,36 @@ export function AdminContenidos() {
     return base
   }, [contenido])
 
+  // Catálogo completo (estático + creado desde la app) que se le pasa a la IA
+  // para que mapee el refuerzo a un dominio que ya existe en vez de proponer
+  // siempre uno nuevo. Solo viajan id y título.
+  const dominiosConocidos = useMemo(
+    () => [
+      ...DOMINIOS.map((d) => ({ id: d.id, titulo: d.titulo })),
+      ...(contenido?.dominios ?? []).map((d) => ({
+        id: d.id,
+        titulo: d.titulo,
+      })),
+    ],
+    [contenido]
+  )
+
+  const lote = useMemo(() => resumenLote(llamadasIa), [llamadasIa])
+
   const cambiar = (parcial: Partial<BorradorMaterial>) =>
     setBorrador((prev) => (prev ? { ...prev, ...parcial } : prev))
 
   const limpiarIa = () => {
     setPanelIa(false)
+    setModoIa('texto')
     setFuenteIa('')
+    setUrlIa('')
+    setLlamadasIa('')
     setFocoIa('')
     setErrorIa(null)
     setAvisoIa(null)
+    setFuenteDetectada(null)
+    setDiagnostico(null)
   }
 
   const nuevo = () => {
@@ -222,6 +266,78 @@ export function AdminContenidos() {
     setPanelIa(false)
     setAvisoIa(
       'Propuesta generada. Revísala completa antes de publicar: la IA puede equivocarse en cifras, plazos y nombres de planes.'
+    )
+  }
+
+  // Misma lógica que `generarConIa`, pero la fuente es un link que primero se
+  // scrapea en el servidor. La propuesta llega con la misma forma y se funde
+  // exactamente igual sobre el formulario.
+  const generarConIaDesdeLink = async () => {
+    if (!borrador || generando) return
+    setGenerando(true)
+    setErrorIa(null)
+    setAvisoIa(null)
+    setFuenteDetectada(null)
+    const { propuesta, fuente, error: problema } = await generarBorradorDesdeLink({
+      url: urlIa,
+      cantidadPreguntas: cantidadIa,
+      foco: focoIa,
+    })
+    setGenerando(false)
+    if (problema || !propuesta) {
+      setErrorIa(problema ?? 'No se pudo generar el borrador.')
+      return
+    }
+    setBorrador(
+      materialDesdePropuesta(propuesta, borrador, {
+        ocupados,
+        editandoExistente,
+      })
+    )
+    setFuenteDetectada(fuente)
+    setPanelIa(false)
+    setAvisoIa(
+      'Propuesta generada a partir del link. Revísala completa antes de publicar: la IA puede equivocarse en cifras, plazos y nombres de planes.'
+    )
+  }
+
+  // De transcripciones a lección: se pega un lote de llamadas mal evaluadas,
+  // la IA detecta los patrones de error que se repiten, propone qué dominio
+  // reforzar y redacta la lección con sus preguntas. La propuesta llega con la
+  // misma forma que las otras dos vías; lo nuevo es el diagnóstico, que se
+  // muestra aparte para que el jefe de calidad pueda contrastarlo con lo que
+  // él mismo vio en las llamadas antes de aceptar el material.
+  const generarConIaDesdeLlamadas = async () => {
+    if (!borrador || generando) return
+    setGenerando(true)
+    setErrorIa(null)
+    setAvisoIa(null)
+    setDiagnostico(null)
+    const {
+      propuesta,
+      diagnostico: analisis,
+      error: problema,
+    } = await generarLeccionDesdeLlamadas({
+      transcripciones: llamadasIa,
+      cantidadPreguntas: cantidadIa,
+      foco: focoIa,
+      dominios: dominiosConocidos,
+    })
+    setGenerando(false)
+    if (problema || !propuesta) {
+      setErrorIa(problema ?? 'No se pudo analizar las llamadas.')
+      return
+    }
+    setBorrador(
+      materialDesdePropuesta(propuesta, borrador, {
+        ocupados,
+        editandoExistente,
+      })
+    )
+    setDiagnostico(analisis)
+    setPanelIa(false)
+    setAvisoIa(
+      'Lección generada a partir de las llamadas. Revisa el diagnóstico y el material completo antes de publicar: la IA puede equivocarse al contar patrones y al citar cifras o plazos.'
     )
   }
 
@@ -373,35 +489,152 @@ export function AdminContenidos() {
               </button>
             </div>
             <p className="mt-1 text-xs text-tinta-suave">
-              Pega un instructivo, un correo de campaña o un procedimiento y la
-              IA propone la lección y las preguntas. Nada se publica solo:
-              siempre revisas y guardas tú.
+              Pega un instructivo, el link de una página, o directamente las
+              transcripciones de las llamadas mal evaluadas, y la IA propone la
+              lección y las preguntas. Nada se publica solo: siempre revisas y
+              guardas tú.
             </p>
 
             {panelIa && (
               <div className="mt-3 space-y-3">
-                <div>
-                  <label
-                    htmlFor="ia-fuente"
-                    className="text-sm font-semibold text-tinta"
+                <div
+                  className="inline-flex rounded-xl border border-gray-200 p-1 text-sm"
+                  role="tablist"
+                  aria-label="Origen del borrador"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoIa === 'texto'}
+                    onClick={() => {
+                      setModoIa('texto')
+                      setErrorIa(null)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+                      modoIa === 'texto'
+                        ? 'bg-wom-600 text-white'
+                        : 'text-tinta-suave hover:text-tinta'
+                    }`}
                   >
-                    Material de referencia
-                  </label>
-                  <textarea
-                    id="ia-fuente"
-                    rows={8}
-                    value={fuenteIa}
-                    maxLength={MAXIMO_CARACTERES_MATERIAL}
-                    onChange={(e) => setFuenteIa(e.target.value)}
-                    placeholder="Pega aquí el procedimiento, la minuta de la campaña o el instructivo…"
-                    className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
-                  />
-                  <p className="mt-1 text-xs text-tinta-suave">
-                    {fuenteIa.length.toLocaleString('es-CL')} de{' '}
-                    {MAXIMO_CARACTERES_MATERIAL.toLocaleString('es-CL')}{' '}
-                    caracteres
-                  </p>
+                    Desde texto
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoIa === 'link'}
+                    onClick={() => {
+                      setModoIa('link')
+                      setErrorIa(null)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+                      modoIa === 'link'
+                        ? 'bg-wom-600 text-white'
+                        : 'text-tinta-suave hover:text-tinta'
+                    }`}
+                  >
+                    Desde un link
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoIa === 'llamadas'}
+                    onClick={() => {
+                      setModoIa('llamadas')
+                      setErrorIa(null)
+                    }}
+                    className={`rounded-lg px-3 py-1.5 font-semibold transition-colors ${
+                      modoIa === 'llamadas'
+                        ? 'bg-wom-600 text-white'
+                        : 'text-tinta-suave hover:text-tinta'
+                    }`}
+                  >
+                    Desde llamadas
+                  </button>
                 </div>
+
+                {modoIa === 'texto' ? (
+                  <div>
+                    <label
+                      htmlFor="ia-fuente"
+                      className="text-sm font-semibold text-tinta"
+                    >
+                      Material de referencia
+                    </label>
+                    <textarea
+                      id="ia-fuente"
+                      rows={8}
+                      value={fuenteIa}
+                      maxLength={MAXIMO_CARACTERES_MATERIAL}
+                      onChange={(e) => setFuenteIa(e.target.value)}
+                      placeholder="Pega aquí el procedimiento, la minuta de la campaña o el instructivo…"
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      {fuenteIa.length.toLocaleString('es-CL')} de{' '}
+                      {MAXIMO_CARACTERES_MATERIAL.toLocaleString('es-CL')}{' '}
+                      caracteres
+                    </p>
+                  </div>
+                ) : modoIa === 'link' ? (
+                  <div>
+                    <label
+                      htmlFor="ia-url"
+                      className="text-sm font-semibold text-tinta"
+                    >
+                      Link de la página
+                    </label>
+                    <input
+                      id="ia-url"
+                      type="url"
+                      inputMode="url"
+                      value={urlIa}
+                      onChange={(e) => setUrlIa(e.target.value)}
+                      placeholder="https://www.wom.cl/ayuda/portabilidad"
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm text-tinta transition-shadow placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      Se extrae el texto de la página (sin menús ni
+                      publicidad) y se usa como material de referencia. Debe
+                      ser un link público, http:// o https://.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label
+                      htmlFor="ia-llamadas"
+                      className="text-sm font-semibold text-tinta"
+                    >
+                      Transcripciones de llamadas
+                    </label>
+                    <textarea
+                      id="ia-llamadas"
+                      rows={10}
+                      value={llamadasIa}
+                      maxLength={MAXIMO_CARACTERES_LLAMADAS}
+                      onChange={(e) => setLlamadasIa(e.target.value)}
+                      placeholder={
+                        'Pega aquí las llamadas mal evaluadas. Sepáralas con una línea de guiones (---) o con "Llamada 1", "Llamada 2"…'
+                      }
+                      className="mt-1 w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 font-mono text-xs text-tinta transition-shadow placeholder:font-sans placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                    />
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      {lote.llamadas === 0
+                        ? 'Ninguna llamada detectada todavía.'
+                        : `${lote.llamadas.toLocaleString('es-CL')} ${
+                            lote.llamadas === 1
+                              ? 'llamada detectada'
+                              : 'llamadas detectadas'
+                          } · ${lote.caracteres.toLocaleString('es-CL')} de ${MAXIMO_CARACTERES_LLAMADAS.toLocaleString('es-CL')} caracteres`}
+                      {lote.descartadas > 0 &&
+                        ` · se analizarán solo las primeras (${lote.descartadas} quedan fuera).`}
+                    </p>
+                    <p className="mt-1 text-xs text-tinta-suave">
+                      Los datos personales del cliente no se incluyen en el
+                      material: la lección y los ejemplos se redactan en
+                      genérico.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                   <Campo
@@ -432,25 +665,162 @@ export function AdminContenidos() {
 
                 {errorIa && <MensajeError>{errorIa}</MensajeError>}
 
-                <Boton
-                  type="button"
-                  variante="secundario"
-                  disabled={generando || fuenteIa.trim().length < 40}
-                  onClick={() => void generarConIa()}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Sparkles className="size-4" />
-                    {generando ? 'Generando…' : 'Generar propuesta'}
-                  </span>
-                </Boton>
+                {modoIa === 'texto' ? (
+                  <Boton
+                    type="button"
+                    variante="secundario"
+                    disabled={generando || fuenteIa.trim().length < 40}
+                    onClick={() => void generarConIa()}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Sparkles className="size-4" />
+                      {generando ? 'Generando…' : 'Generar propuesta'}
+                    </span>
+                  </Boton>
+                ) : modoIa === 'link' ? (
+                  <Boton
+                    type="button"
+                    variante="secundario"
+                    disabled={generando || urlIa.trim().length === 0}
+                    onClick={() => void generarConIaDesdeLink()}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Link2 className="size-4" />
+                      {generando ? 'Extrayendo…' : 'Generar desde el link'}
+                    </span>
+                  </Boton>
+                ) : (
+                  <div className="space-y-2">
+                    <Boton
+                      type="button"
+                      variante="secundario"
+                      disabled={generando || lote.impedimento !== null}
+                      onClick={() => void generarConIaDesdeLlamadas()}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Headphones className="size-4" />
+                        {generando
+                          ? 'Analizando…'
+                          : 'Analizar y generar la lección'}
+                      </span>
+                    </Boton>
+                    {lote.impedimento && !generando && (
+                      <p className="text-xs text-tinta-suave">
+                        {lote.impedimento}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {generando && (
                   <p className="text-xs text-tinta-suave" role="status">
-                    Redactando la lección y las preguntas. Puede tardar hasta un
-                    minuto.
+                    {modoIa === 'link'
+                      ? 'Extrayendo el contenido de la página y generando la lección y las preguntas. Puede tardar más que con texto pegado.'
+                      : modoIa === 'llamadas'
+                        ? 'Leyendo las llamadas, buscando los patrones que se repiten y redactando la lección. Con un lote grande puede tardar un par de minutos.'
+                        : 'Redactando la lección y las preguntas. Puede tardar hasta un minuto.'}
                   </p>
                 )}
               </div>
             )}
+
+            {fuenteDetectada && (
+              <p className="mt-3 text-xs text-tinta-suave">
+                Extraído de{' '}
+                <span className="font-semibold">{fuenteDetectada.url}</span>
+                {fuenteDetectada.tituloDetectado
+                  ? ` — "${fuenteDetectada.tituloDetectado}"`
+                  : ''}
+                .
+              </p>
+            )}
+
+            {diagnostico &&
+              (diagnostico.patrones.length > 0 ||
+                diagnostico.dominioSugerido) && (
+                <div className="mt-3 rounded-xl border border-gray-200 bg-superficie p-4">
+                  <p className="inline-flex items-center gap-2 text-sm font-bold text-tinta">
+                    <Headphones className="size-4 text-enlace" />
+                    Qué falló en las llamadas
+                  </p>
+                  {diagnostico.resumen && (
+                    <p className="mt-1 text-sm text-tinta-suave">
+                      {diagnostico.resumen}
+                    </p>
+                  )}
+
+                  {diagnostico.dominioSugerido && (
+                    <p className="mt-3 text-xs text-tinta-suave">
+                      Dominio a reforzar:{' '}
+                      <span className="font-semibold text-tinta">
+                        {diagnostico.dominioSugerido.titulo}
+                      </span>{' '}
+                      {diagnostico.dominioSugerido.esNuevo
+                        ? '(dominio nuevo)'
+                        : '(ya existe en el catálogo)'}
+                      {diagnostico.dominioSugerido.motivo
+                        ? ` — ${diagnostico.dominioSugerido.motivo}`
+                        : ''}
+                    </p>
+                  )}
+
+                  {diagnostico.patrones.length > 0 && (
+                    <ul className="mt-3 space-y-3">
+                      {patronesPriorizados(diagnostico.patrones).map(
+                        (patron) => (
+                          <li
+                            key={patron.titulo}
+                            className="rounded-lg border border-gray-200 p-3"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${
+                                  patron.gravedad === 'alta'
+                                    ? 'bg-red-100 text-red-700'
+                                    : patron.gravedad === 'media'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {patron.gravedad}
+                              </span>
+                              <span className="text-sm font-semibold text-tinta">
+                                {patron.titulo}
+                              </span>
+                              <span className="text-xs text-tinta-suave">
+                                {patron.llamadas === 1
+                                  ? 'en 1 llamada'
+                                  : `en ${patron.llamadas} llamadas`}
+                              </span>
+                            </div>
+                            {patron.descripcion && (
+                              <p className="mt-1 text-xs text-tinta-suave">
+                                {patron.descripcion}
+                              </p>
+                            )}
+                            {patron.ejemplo && (
+                              <p className="mt-1 border-l-2 border-gray-200 pl-2 text-xs italic text-tinta-suave">
+                                “{patron.ejemplo}”
+                              </p>
+                            )}
+                            {patron.impacto && (
+                              <p className="mt-1 text-xs text-tinta-suave">
+                                <span className="font-semibold">Impacto:</span>{' '}
+                                {patron.impacto}
+                              </p>
+                            )}
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  )}
+
+                  <p className="mt-3 text-xs text-tinta-suave">
+                    Este diagnóstico es un apoyo, no una evaluación de
+                    desempeño: contrástalo con lo que escuchaste antes de usarlo
+                    para tomar decisiones sobre personas.
+                  </p>
+                </div>
+              )}
 
             {avisoIa && (
               <div className="mt-3">
