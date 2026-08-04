@@ -547,6 +547,39 @@ export type Database = {
         }
         Relationships: []
       }
+      familias_insignias: {
+        Row: {
+          activa: boolean
+          categoria: string
+          creado_en: string
+          criterio: string
+          descripcion: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          activa?: boolean
+          categoria: string
+          creado_en?: string
+          criterio?: string
+          descripcion?: string
+          id: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          activa?: boolean
+          categoria?: string
+          creado_en?: string
+          criterio?: string
+          descripcion?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       funcionalidades: {
         Row: {
           descripcion: string
@@ -672,11 +705,14 @@ export type Database = {
           creado_en: string
           criterio: string
           descripcion: string
+          familia_id: string | null
           icono: string
           id: string
           nombre: string
           orden: number
           tier: string
+          titulo: string | null
+          umbral: number | null
         }
         Insert: {
           activa?: boolean
@@ -685,11 +721,14 @@ export type Database = {
           creado_en?: string
           criterio: string
           descripcion: string
+          familia_id?: string | null
           icono: string
           id: string
           nombre: string
           orden?: number
           tier?: string
+          titulo?: string | null
+          umbral?: number | null
         }
         Update: {
           activa?: boolean
@@ -698,16 +737,28 @@ export type Database = {
           creado_en?: string
           criterio?: string
           descripcion?: string
+          familia_id?: string | null
           icono?: string
           id?: string
           nombre?: string
           orden?: number
           tier?: string
+          titulo?: string | null
+          umbral?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insignias_familia_id_fkey"
+            columns: ["familia_id"]
+            isOneToOne: false
+            referencedRelation: "familias_insignias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       insignias_usuario: {
         Row: {
+          id: string
           insignia_id: string
           nota: string | null
           obtenida_en: string
@@ -715,6 +766,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          id?: string
           insignia_id: string
           nota?: string | null
           obtenida_en?: string
@@ -722,6 +774,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          id?: string
           insignia_id?: string
           nota?: string | null
           obtenida_en?: string
@@ -892,6 +945,55 @@ export type Database = {
           {
             foreignKeyName: "profiles_supervisor_id_fkey"
             columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      progreso_familias_insignias: {
+        Row: {
+          actualizado_en: string
+          actualizado_por: string | null
+          familia_id: string
+          id: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          actualizado_en?: string
+          actualizado_por?: string | null
+          familia_id: string
+          id?: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          actualizado_en?: string
+          actualizado_por?: string | null
+          familia_id?: string
+          id?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progreso_familias_insignias_actualizado_por_fkey"
+            columns: ["actualizado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progreso_familias_insignias_familia_id_fkey"
+            columns: ["familia_id"]
+            isOneToOne: false
+            referencedRelation: "familias_insignias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progreso_familias_insignias_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

@@ -51,20 +51,28 @@ function TarjetaInsignia({
       className={`text-left ${insignia.obtenida ? 'cursor-pointer' : 'cursor-default'}`}
       aria-label={
         insignia.obtenida
-          ? `${insignia.nombre}, obtenida`
+          ? `${insignia.nombre}, obtenida${insignia.veces > 1 ? ` ${insignia.veces} veces` : ''}`
           : `${insignia.nombre}, bloqueada: ${insignia.criterio}`
       }
     >
       <Tarjeta
-        className={`flex h-full flex-col items-center gap-1.5 p-4 text-center ring-2 transition-opacity ${tier.anillo} ${
+        className={`relative flex h-full flex-col items-center gap-1.5 p-4 text-center ring-2 transition-opacity ${tier.anillo} ${
           insignia.obtenida ? '' : 'opacity-50 grayscale'
         }`}
       >
+        {insignia.veces > 1 && (
+          <span
+            className="absolute right-2 top-2 rounded-full bg-magenta-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow"
+            title={`Obtenida ${insignia.veces} veces`}
+          >
+            x{insignia.veces}
+          </span>
+        )}
         <span className="grid size-14 place-items-center text-4xl">
           {insignia.obtenida ? insignia.icono : <Lock className="size-7 text-tinta-suave" />}
         </span>
         <span className={`text-[10px] font-bold uppercase tracking-wide ${tier.texto}`}>
-          {tier.etiqueta}
+          {insignia.titulo ?? tier.etiqueta}
         </span>
         <span className="text-sm font-bold leading-tight">{insignia.nombre}</span>
         <span className="text-xs leading-tight text-tinta-suave">
@@ -80,7 +88,8 @@ export default function AlbumPremios() {
   const reduce = useReducedMotion()
   const [datos, setDatos] = useState<AlbumInsignias | null>(null)
   const [seleccion, setSeleccion] = useState<Insignia | null>(null)
-  const [trazabilidad, setTrazabilidad] = useState<TrazabilidadInsignia | null>(null)
+  const [trazabilidad, setTrazabilidad] = useState<TrazabilidadInsignia[] | null>(null)
+  const [vecesSeleccion, setVecesSeleccion] = useState(0)
 
   useEffect(() => {
     if (!user) return
@@ -157,18 +166,21 @@ export default function AlbumPremios() {
                     descripcion: insignia.descripcion,
                     icono: insignia.icono,
                   })
+                  setVecesSeleccion(insignia.veces)
                   // Trazabilidad de auditoría: solo aplica a insignias de
                   // desempeño otorgadas a mano (no a las de formación,
-                  // auto-otorgadas por el sistema).
+                  // auto-otorgadas por el sistema). Si se otorgó más de una
+                  // vez ("xN"), se listan TODAS las ocurrencias, no solo la
+                  // última.
                   setTrazabilidad(
-                    insignia.categoria !== 'formacion' &&
-                      insignia.otorgadoPorNombre &&
-                      insignia.obtenidaEn
-                      ? {
-                          nombreAdmin: insignia.otorgadoPorNombre,
-                          fecha: insignia.obtenidaEn,
-                          nota: insignia.nota,
-                        }
+                    insignia.categoria !== 'formacion'
+                      ? insignia.ocurrencias
+                          .filter((o) => o.otorgadoPorNombre)
+                          .map((o) => ({
+                            nombreAdmin: o.otorgadoPorNombre as string,
+                            fecha: o.obtenidaEn,
+                            nota: o.nota,
+                          }))
                       : null
                   )
                 }}
@@ -182,9 +194,11 @@ export default function AlbumPremios() {
         insignia={seleccion}
         titulo="Insignia obtenida"
         trazabilidad={trazabilidad}
+        veces={vecesSeleccion}
         onCerrar={() => {
           setSeleccion(null)
           setTrazabilidad(null)
+          setVecesSeleccion(0)
         }}
       />
     </section>
