@@ -3,9 +3,18 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/useAuth'
 import { Boton, EstadoCarga, MensajeError, Tarjeta } from '../ui'
 import { AdminCrearUsuario } from '../AdminCrearUsuario'
+import { AdminCargaMasivaUsuarios } from '../AdminCargaMasivaUsuarios'
 import { EditarAccesosUsuario } from '../EditarAccesosUsuario'
 import { GruposAcceso } from '../GruposAcceso'
-import { asignarGrupoAUsuarios, cargarGruposAcceso, type GrupoAcceso } from '../../lib/funcionalidades'
+import {
+  aplicarFuncionalidadAUsuarios,
+  asignarGrupoAUsuarios,
+  cargarCatalogoFuncionalidades,
+  cargarGruposAcceso,
+  type AccionFuncionalidadMasiva,
+  type Funcionalidad,
+  type GrupoAcceso,
+} from '../../lib/funcionalidades'
 import { etiquetaRol, puedeAsignar, puedeTenerSupervisor, type Rol } from '../../lib/roles'
 import type { Tables } from '../../lib/database.types'
 
@@ -21,18 +30,30 @@ export default function TabUsuariosAccesos() {
   const [usuarios, setUsuarios] = useState<Perfil[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [grupos, setGrupos] = useState<GrupoAcceso[]>([])
+  const [catalogo, setCatalogo] = useState<Funcionalidad[]>([])
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [grupoAsignacion, setGrupoAsignacion] = useState('')
   const [asignando, setAsignando] = useState(false)
   const [exitoAsignacion, setExitoAsignacion] = useState<string | null>(null)
 
+  // Bulk-toggle de una funcionalidad puntual (segunda acción masiva de la
+  // barra, junto a "asignar grupo"): pide confirmación antes de aplicar
+  // porque afecta a todos los seleccionados de una sola vez.
+  const [funcionalidadMasiva, setFuncionalidadMasiva] = useState('')
+  const [accionMasiva, setAccionMasiva] = useState<AccionFuncionalidadMasiva>('deshabilitar')
+  const [confirmandoFuncionalidad, setConfirmandoFuncionalidad] = useState(false)
+  const [aplicandoFuncionalidad, setAplicandoFuncionalidad] = useState(false)
+  const [exitoFuncionalidad, setExitoFuncionalidad] = useState<string | null>(null)
+
   const cargar = useCallback(async () => {
-    const [perfiles, listaGrupos] = await Promise.all([
+    const [perfiles, listaGrupos, catalogoFuncionalidades] = await Promise.all([
       supabase.from('profiles').select('*').order('creado_en'),
       cargarGruposAcceso(),
+      cargarCatalogoFuncionalidades(),
     ])
     setUsuarios(perfiles.data ?? [])
     setGrupos(listaGrupos)
+    setCatalogo(catalogoFuncionalidades)
   }, [])
 
   useEffect(() => {
@@ -133,6 +154,39 @@ export default function TabUsuariosAccesos() {
     void cargar()
   }
 
+  // Bulk-toggle de una funcionalidad para todos los seleccionados: primero
+  // pide confirmación explícita (acción de alto impacto, sin deshacer fácil
+  // salvo repetir al revés), y solo al confirmar llama al batch real.
+  const aplicarFuncionalidadMasiva = async () => {
+    if (seleccionados.size === 0 || !funcionalidadMasiva) return
+    setAplicandoFuncionalidad(true)
+    setError(null)
+    setExitoFuncionalidad(null)
+    const { actualizados, error: aplicarError } = await aplicarFuncionalidadAUsuarios(
+      [...seleccionados],
+      funcionalidadMasiva,
+      accionMasiva
+    )
+    setAplicandoFuncionalidad(false)
+    setConfirmandoFuncionalidad(false)
+    if (aplicarError) {
+      setError(aplicarError)
+      return
+    }
+    const nombreFuncionalidad = catalogo.find((f) => f.id === funcionalidadMasiva)?.nombre
+    const verbo =
+      accionMasiva === 'habilitar'
+        ? 'habilitó'
+        : accionMasiva === 'deshabilitar'
+          ? 'deshabilitó'
+          : 'quitó la excepción de'
+    setExitoFuncionalidad(
+      `Se ${verbo} "${nombreFuncionalidad}" para ${actualizados} usuario(s).`
+    )
+    setSeleccionados(new Set())
+    void cargar()
+  }
+
   return (
     <div>
       {error && (
@@ -143,6 +197,7 @@ export default function TabUsuariosAccesos() {
 
       <h2 className="mt-2 text-lg font-bold">Usuarios</h2>
       <AdminCrearUsuario usuarios={usuarios ?? []} onCreado={() => void cargar()} />
+      <AdminCargaMasivaUsuarios usuarios={usuarios ?? []} onCreados={() => void cargar()} />
       {!usuarios ? (
         <EstadoCarga texto="Cargando usuarios…" />
       ) : (
@@ -185,6 +240,97 @@ export default function TabUsuariosAccesos() {
           )}
           {exitoAsignacion && (
             <p className="mt-2 text-sm font-semibold text-exito-texto">{exitoAsignacion}</p>
+          )}
+
+          {seleccionados.size > 0 && (
+            <Tarjeta className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <p className="text-sm font-semibold text-tinta sm:flex-1">
+                Excepción individual para {seleccionados.size} usuario(s)
+              </p>
+              <div className="flex-1 space-y-1.5">
+                <label
+                  htmlFor="masivo-funcionalidad"
+                  className="block text-sm font-semibold text-tinta"
+                >
+                  Funcionalidad
+                </label>
+                <select
+                  id="masivo-funcionalidad"
+                  value={funcionalidadMasiva}
+                  onChange={(e) => {
+                    setFuncionalidadMasiva(e.target.value)
+                    setConfirmandoFuncionalidad(false)
+                  }}
+                  className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                >
+                  <option value="">Selecciona una funcionalidad</option>
+                  {catalogo.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <label
+                  htmlFor="masivo-accion"
+                  className="block text-sm font-semibold text-tinta"
+                >
+                  Acción
+                </label>
+                <select
+                  id="masivo-accion"
+                  value={accionMasiva}
+                  onChange={(e) => {
+                    setAccionMasiva(e.target.value as AccionFuncionalidadMasiva)
+                    setConfirmandoFuncionalidad(false)
+                  }}
+                  className="w-full rounded-xl border border-gray-200 bg-superficie px-4 py-2.5 text-sm transition-shadow focus:border-transparent focus:outline-none focus:ring-2 focus:ring-wom-600"
+                >
+                  <option value="habilitar">Habilitar</option>
+                  <option value="deshabilitar">Deshabilitar</option>
+                  <option value="quitar_excepcion">Quitar excepción individual</option>
+                </select>
+              </div>
+              {!confirmandoFuncionalidad ? (
+                <Boton
+                  type="button"
+                  variante="secundario"
+                  disabled={!funcionalidadMasiva}
+                  onClick={() => setConfirmandoFuncionalidad(true)}
+                  className="sm:self-end"
+                >
+                  Aplicar a {seleccionados.size} usuario(s)
+                </Boton>
+              ) : (
+                <div className="flex gap-2 sm:self-end">
+                  <Boton
+                    type="button"
+                    disabled={aplicandoFuncionalidad}
+                    onClick={() => void aplicarFuncionalidadMasiva()}
+                  >
+                    {aplicandoFuncionalidad ? 'Aplicando…' : 'Confirmar'}
+                  </Boton>
+                  <Boton
+                    type="button"
+                    variante="fantasma"
+                    disabled={aplicandoFuncionalidad}
+                    onClick={() => setConfirmandoFuncionalidad(false)}
+                  >
+                    Cancelar
+                  </Boton>
+                </div>
+              )}
+              {confirmandoFuncionalidad && (
+                <p className="w-full text-sm font-semibold text-magenta-500">
+                  Esto afectará el acceso de {seleccionados.size} usuario(s) de inmediato.
+                  ¿Confirmas?
+                </p>
+              )}
+            </Tarjeta>
+          )}
+          {exitoFuncionalidad && (
+            <p className="mt-2 text-sm font-semibold text-exito-texto">{exitoFuncionalidad}</p>
           )}
           <Tarjeta className="mt-3 overflow-x-auto p-0">
           <table className="w-full min-w-[620px] text-sm">
