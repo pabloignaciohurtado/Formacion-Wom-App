@@ -45,6 +45,14 @@ export interface PropuestaMaterial {
   preguntas?: unknown
 }
 
+// Metadatos de la página de la que se extrajo el texto, informativos para
+// que el administrador sepa qué se scrapeo. No forman parte del contrato de
+// `materialDesdePropuesta`.
+export interface FuenteLink {
+  url: string
+  tituloDetectado: string | null
+}
+
 function texto(valor: unknown, maximo = 400): string {
   if (typeof valor !== 'string') return ''
   return valor.trim().slice(0, maximo)
@@ -149,7 +157,7 @@ export function materialDesdePropuesta(
   const leccion = (datos.leccion ?? {}) as { titulo?: unknown; cuerpo?: unknown }
 
   // Editando un material ya publicado el slug es inmutable: cambiarlo
-  // rompería los `attempts` y las tarjetas de repaso que lo referencian.
+  // romparía los `attempts` y las tarjetas de repaso que lo referencian.
   const slug = opciones.editandoExistente
     ? base.slug
     : slugLibre(titulo, opciones.ocupados) || base.slug
@@ -219,4 +227,60 @@ export async function pedirBorradorIa(
     return { propuesta: null, error: 'La IA no devolvió una propuesta.' }
   }
   return { propuesta: data.propuesta, error: null }
+}
+
+export interface PeticionBorradorDesdeLink {
+  url: string
+  cantidadPreguntas: number
+  foco: string
+}
+
+export interface ResultadoBorradorDesdeLink {
+  propuesta: PropuestaMaterial | null
+  fuente: FuenteLink | null
+  error: string | null
+}
+
+// Extrae el texto legible de un link y pide a la IA la misma propuesta que
+// `pedirBorradorIa`. La llama a una Edge Function distinta
+// (`generar-ejercicios-desde-link`) porque el scraping y el fetch con
+// límites propios (tamaño, tiempo, guardas de SSRF) viven ahí, pero la forma
+// de la respuesta es idéntica: `materialDesdePropuesta` se reutiliza sin
+// adaptarla.
+export async function generarBorradorDesdeLink(
+  peticion: PeticionBorradorDesdeLink
+): Promise<ResultadoBorradorDesdeLink> {
+  const { data, error } = await supabase.functions.invoke<{
+    propuesta: PropuestaMaterial
+    fuente?: FuenteLink
+  }>('generar-ejercicios-desde-link', {
+    body: {
+      url: peticion.url.trim(),
+      cantidadPreguntas: acotar(
+        entero(peticion.cantidadPreguntas),
+        MINIMO_PREGUNTAS_PEDIDAS,
+        MAXIMO_PREGUNTAS_PEDIDAS
+      ),
+      foco: peticion.foco.trim(),
+    },
+  })
+
+  if (error) {
+    let mensaje = 'No se pudo generar el borrador desde el link.'
+    const contexto = (error as { context?: Response }).context
+    if (contexto && typeof contexto.json === 'function') {
+      try {
+        const cuerpo = await contexto.json()
+        if (typeof cuerpo?.error === 'string') mensaje = cuerpo.error
+      } catch {
+        // Sin cuerpo JSON útil: se queda el mensaje genérico.
+      }
+    }
+    return { propuesta: null, fuente: null, error: mensaje }
+  }
+
+  if (!data?.propuesta) {
+    return { propuesta: null, fuente: null, error: 'La IA no devolvió una propuesta.' }
+  }
+  return { propuesta: data.propuesta, fuente: data.fuente ?? null, error: null }
 }

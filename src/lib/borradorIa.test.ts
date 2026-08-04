@@ -1,6 +1,16 @@
-import { describe, expect, it } from 'vitest'
-import { materialDesdePropuesta, slugLibre } from './borradorIa'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BorradorMaterial } from './contenidoRemoto'
+
+vi.mock('./supabase', () => ({
+  supabase: {
+    functions: {
+      invoke: vi.fn(),
+    },
+  },
+}))
+
+const { materialDesdePropuesta, slugLibre, generarBorradorDesdeLink } =
+  await import('./borradorIa')
 
 function base(): BorradorMaterial {
   return {
@@ -235,5 +245,99 @@ describe('materialDesdePropuesta', () => {
     )
     expect(resultado.categoriaId).toBe('habilidades')
     expect(resultado.publicado).toBe(true)
+  })
+})
+
+describe('generarBorradorDesdeLink', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('llama a la Edge Function con el link y las opciones normalizadas', async () => {
+    const { supabase } = await import('./supabase')
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: {
+        propuesta: { titulo: 'Portabilidad' },
+        fuente: { url: 'https://ejemplo.com/ayuda', tituloDetectado: 'Ayuda' },
+      },
+      error: null,
+    } as never)
+
+    const resultado = await generarBorradorDesdeLink({
+      url: '  https://ejemplo.com/ayuda  ',
+      cantidadPreguntas: 30,
+      foco: '  precios  ',
+    })
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      'generar-ejercicios-desde-link',
+      {
+        body: {
+          url: 'https://ejemplo.com/ayuda',
+          cantidadPreguntas: 12,
+          foco: 'precios',
+        },
+      }
+    )
+    expect(resultado.error).toBeNull()
+    expect(resultado.propuesta?.titulo).toBe('Portabilidad')
+    expect(resultado.fuente).toEqual({
+      url: 'https://ejemplo.com/ayuda',
+      tituloDetectado: 'Ayuda',
+    })
+  })
+
+  it('devuelve el mensaje de error del cuerpo de la respuesta', async () => {
+    const { supabase } = await import('./supabase')
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: {
+        context: {
+          json: async () => ({ error: 'Ese destino no está permitido.' }),
+        },
+      },
+    } as never)
+
+    const resultado = await generarBorradorDesdeLink({
+      url: 'http://10.0.0.5/panel',
+      cantidadPreguntas: 5,
+      foco: '',
+    })
+
+    expect(resultado.propuesta).toBeNull()
+    expect(resultado.error).toBe('Ese destino no está permitido.')
+  })
+
+  it('usa un mensaje genérico si el error no trae cuerpo JSON', async () => {
+    const { supabase } = await import('./supabase')
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: null,
+      error: {},
+    } as never)
+
+    const resultado = await generarBorradorDesdeLink({
+      url: 'https://ejemplo.com',
+      cantidadPreguntas: 5,
+      foco: '',
+    })
+
+    expect(resultado.error).toBe('No se pudo generar el borrador desde el link.')
+  })
+
+  it('avisa si la IA no devuelve propuesta', async () => {
+    const { supabase } = await import('./supabase')
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: {},
+      error: null,
+    } as never)
+
+    const resultado = await generarBorradorDesdeLink({
+      url: 'https://ejemplo.com',
+      cantidadPreguntas: 5,
+      foco: '',
+    })
+
+    expect(resultado.propuesta).toBeNull()
+    expect(resultado.error).toBe('La IA no devolvió una propuesta.')
   })
 })
