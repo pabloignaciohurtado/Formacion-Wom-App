@@ -369,6 +369,56 @@ slug se deriva del título y se sufija `-2`, `-3`… si choca con uno existente;
 **editando un material ya creado el slug nunca cambia**, porque lo referencian
 los `attempts` y las tarjetas de repaso.
 
+### 6.1.3 Generar desde un link (`generar-ejercicios-desde-link`)
+
+Segunda fuente del panel de IA: en vez de pegar el texto se pega la **URL** de
+un instructivo publicado. La Edge Function descarga la página con un tope de
+2 MB, extrae el texto legible del HTML y desde ahí sigue el mismo camino que
+el borrador pegado. Si la extracción devuelve menos de 100 caracteres útiles
+—una página que se arma por JavaScript, un PDF, un portal que exige sesión—
+la función lo dice en vez de mandarle basura al modelo. Mantiene los mismos
+guardias que §6.1.2: JWT, rol `supervisor`/`admin`, y el mismo tope de 24 000
+caracteres de material.
+
+### 6.1.4 De transcripciones a lección (`generar-leccion-desde-llamadas`)
+
+Tercera fuente, y la que conecta el monitoreo de calidad con la formación:
+se pega un **lote de transcripciones de llamadas mal evaluadas** y la app
+devuelve un diagnóstico de los errores que se repiten más la lección que los
+corrige, con sus preguntas.
+
+**Cliente (`src/lib/transcripciones.ts`).** Antes de llamar al servidor el
+lote se separa en llamadas individuales: reconoce encabezados (`Llamada 3`,
+`### Caso 2:`, `--- Interacción 4 ---`) y separadores de guiones, iguales,
+asteriscos o guiones bajos, sin confundirse con una frase que mencione "la
+llamada 3" al pasar. Topes: 40 llamadas, 60 000 caracteres, mínimo 200 para
+que valga la pena analizar. El contador en vivo bajo el campo dice cuántas
+llamadas se detectaron, cuántos caracteres van y cuántas quedaron fuera.
+
+**Servidor.** Mismos guardias que las otras dos vías. El recorte al tope de
+60 000 caracteres **descarta llamadas completas desde el final**, nunca corta
+una a la mitad: una transcripción truncada se lee como una llamada que se
+cayó y contamina el diagnóstico. El esquema forzado devuelve dos mitades: un
+`diagnostico` (resumen, patrones con gravedad, conteo, ejemplo e impacto, más
+el dominio a reforzar) y **exactamente la misma forma `PropuestaMaterial`**
+que las otras dos rutas, de modo que `materialDesdePropuesta()` (§6.1.2) la
+normaliza sin adaptación alguna.
+
+**Lo que se defiende en el cliente.** El conteo de llamadas de cada patrón es
+el número con el que un jefe de calidad prioriza, así que se acota al total
+realmente analizado; las gravedades inventadas se normalizan a `media`; los
+patrones sin título se descartan; y **solo se acepta un `dominioSugerido.id`
+que exista de verdad** en el catálogo — si el modelo inventa uno, la ficha se
+degrada a "dominio nuevo" en vez de apuntar a un dominio inexistente.
+
+**Privacidad y uso responsable.** Las transcripciones traen datos de personas
+reales. El prompt del sistema prohíbe explícitamente reproducir nombres, RUT,
+teléfonos, direcciones, correos y números de cuenta o contrato en cualquier
+parte de la salida, y tampoco identificar al ejecutivo por su nombre. La
+interfaz lo dice en pantalla, y la tarjeta de diagnóstico lleva la advertencia
+de que **es un apoyo, no una evaluación de desempeño**: el material es
+formación, no insumo para decisiones sobre personas.
+
 ### 6.2 Algoritmo Leitner (`src/lib/srs.ts`)
 
 - 5 cajas; intervalo hasta el próximo repaso: **1, 2, 4, 8, 16 días**
