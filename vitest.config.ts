@@ -7,7 +7,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
     env: {
       VITE_SUPABASE_URL: 'https://test.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'sb_publishable_test',
