@@ -46,7 +46,7 @@ export interface PropuestaMaterial {
 }
 
 // Metadatos de la página de la que se extrajo el texto, informativos para
-// que el administrador sepa qué se scrapeo. No forman parte del contrato de
+// que el administrador sepa qué se scrapeó. No forman parte del contrato de
 // `materialDesdePropuesta`.
 export interface FuenteLink {
   url: string
