@@ -157,7 +157,7 @@ export function materialDesdePropuesta(
   const leccion = (datos.leccion ?? {}) as { titulo?: unknown; cuerpo?: unknown }
 
   // Editando un material ya publicado el slug es inmutable: cambiarlo
-  // romparía los `attempts` y las tarjetas de repaso que lo referencian.
+  // rompería los `attempts` y las tarjetas de repaso que lo referencian.
   const slug = opciones.editandoExistente
     ? base.slug
     : slugLibre(titulo, opciones.ocupados) || base.slug
